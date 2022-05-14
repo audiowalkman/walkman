@@ -1,9 +1,16 @@
+"""Handle audio playback for walkman"""
+
+from __future__ import annotations
 import abc
 import functools
 import time
+import tempfile
 import typing
+import warnings
 
+import numpy as np
 import pyo
+import soundfile
 
 import walkman
 
@@ -16,6 +23,8 @@ SampleType = str
 
 
 class ChannelMapping(typing.Dict[int, int]):
+    """Map sound file channel to physical outputs"""
+
     @property
     def output_channel_list(self) -> typing.List[int]:
         return list(self.values())
@@ -28,13 +37,32 @@ class ChannelMapping(typing.Dict[int, int]):
         return pyo.Mixer(outs=self.maxima_output_channel)
 
 
+class NotEnoughChannelWarning(Warning):
+    """Hint if user given soundfiles don't have enough channels"""
+
+
 class SoundFile(object):
     """Initialize a sound file"""
 
-    def __init__(self, sound_file_name: str, path: str, loop: bool = False):
-        self.sound_file_name = sound_file_name
+    def __init__(
+        self,
+        name: str,
+        path: str,
+        loop: bool = False,
+        # In case SoundFile is available as a temporary file (because
+        # channels have been added) we have to pass the
+        # temporary_file to the object in order to avoid that
+        # the garbage collector closes the file.
+        temporary_file: typing.Optional[tempfile.NamedTemporaryFile] = None,
+    ):
+        self.name = name
         self.path = str(path)
         self.loop = loop
+        self.temporary_file = temporary_file
+
+    def close(self):
+        if self.temporary_file is not None:
+            self.temporary_file.close()
 
     @functools.cached_property
     def information_tuple(
@@ -72,6 +100,49 @@ class SoundFile(object):
     @functools.cached_property
     def sample_type(self) -> SampleType:
         return self.information_tuple[5]
+
+    def _expand_sound_file(self, path: str, channel_to_add_count: int):
+        original_sound_file, sampling_rate = soundfile.read(self.path)
+        if original_sound_file.ndim == 1:
+            new_sound_file = original_sound_file[..., np.newaxis]
+        else:
+            new_sound_file = original_sound_file
+
+        zero_array = np.zeros([len(original_sound_file)])
+        zero_array = zero_array[..., np.newaxis]
+
+        new_sound_file = np.hstack(
+            [new_sound_file] + ([zero_array] * channel_to_add_count)
+        )
+        soundfile.write(path, new_sound_file, sampling_rate, format="wav")
+
+    def expand_to(self, channel_count: int) -> SoundFile:
+        difference = channel_count - self.channel_count
+        if difference > 0:
+            warnings.warn(
+                f"SoundFile '{self.name}' misses {difference} channels. "
+                f"{walkman.constants.NAME} automatically added {difference}"
+                " silent channels.",
+                NotEnoughChannelWarning,
+            )
+            temporary_file = tempfile.NamedTemporaryFile()
+            new_path = temporary_file.name
+            self._expand_sound_file(new_path, difference)
+            expanded_sound_file = type(self)(
+                name=self.name,
+                path=new_path,
+                loop=self.loop,
+                temporary_file=temporary_file,
+            )
+            return expanded_sound_file
+        elif difference < 0:
+            raise ValueError(
+                "Can't expand SoundFile with "
+                f"channel_count = {self.channel_count}"
+                f"to only {channel_count} channels!"
+            )
+        else:
+            return self
 
 
 class SoundFilePlayer(abc.ABC):
@@ -226,6 +297,10 @@ class AudioHost(object):
     Simplifies server API and adds volumes controls.
     """
 
+    # Add slow delay to wait delay, in order to ensure
+    # that sound file is faded out already
+    SLEEP_TOLERANCE = 0.1
+
     def __init__(
         self,
         sound_file_tuple: typing.Tuple[SoundFile, ...],
@@ -233,16 +308,24 @@ class AudioHost(object):
         audio: str = "jack",
         sampling_rate: int = 44100,
         buffer_size: int = 256,
-        channel_mapping: typing.Union[ChannelMapping, typing.Dict[int, int]] = {
-            index: index for index in range(2)
-        },
+        channel_mapping: typing.Optional[
+            typing.Union[ChannelMapping, typing.Dict[int, int]]
+        ] = None,
     ):
         assert sound_file_tuple
+
+        if channel_mapping is None:
+            channel_mapping = {
+                index: index
+                for index in range(
+                    max([sound_file.channel_count for sound_file in sound_file_tuple])
+                )
+            }
 
         if type(channel_mapping) == dict:
             channel_mapping = ChannelMapping(channel_mapping)
 
-        self.sound_file_tuple = sound_file_tuple
+        self.sound_file_tuple = self._standardize_sound_file_tuple(sound_file_tuple)
 
         self.server = pyo.Server(
             sr=sampling_rate,
@@ -260,8 +343,25 @@ class AudioHost(object):
             # "ram": SoundFilePlayerRAM,  # NotImplementedYet
         }[player]
 
-        self.sound_file_player = sound_file_player_class(sound_file_tuple[0])
+        self.sound_file_player = sound_file_player_class(self.sound_file_tuple[0])
 
+        self._add_sound_file_player_to_mixer(channel_mapping)
+
+    def _standardize_sound_file_tuple(
+        self, sound_file_tuple: typing.Tuple[SoundFile, ...]
+    ) -> typing.Tuple[SoundFile, ...]:
+        """Ensure all sound files have the same channel count"""
+        maxima_channel_count = max(
+            map(lambda sound_file: sound_file.channel_count, sound_file_tuple)
+        )
+        standardized_sound_file_list = []
+        for sound_file in sound_file_tuple:
+            standardized_sound_file_list.append(
+                sound_file.expand_to(maxima_channel_count)
+            )
+        return tuple(standardized_sound_file_list)
+
+    def _add_sound_file_player_to_mixer(self, channel_mapping: ChannelMapping):
         for index, input_channel in enumerate(channel_mapping):
             output_channel = channel_mapping[input_channel]
             if (
@@ -280,5 +380,9 @@ class AudioHost(object):
 
     def stop(self):
         self.sound_file_player.amplitude = 0
-        time.sleep(self.sound_file_player.delay)
+        time.sleep(self.sound_file_player.delay + self.SLEEP_TOLERANCE)
         self.server.stop()
+
+    def close(self):
+        self.stop()
+        [sound_file.close() for sound_file in self.sound_file_tuple]

@@ -33,8 +33,10 @@ setuptools.setup(
         "click==8.1.3",
         # to read config files
         "tomlkit==0.10.2",
-        # to catch keyboard input
-        "pynput==1.7.6",
+        # to convert smaller channel sound files
+        # to larger channel sound files
+        "SoundFile==0.10.3.post1",
+        "numpy==1.22.3",
     ],
     extras_require=extras_require,
     python_requires="==3.8",
