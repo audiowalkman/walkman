@@ -40,4 +40,5 @@ setuptools.setup(
     ],
     extras_require=extras_require,
     python_requires="==3.8",
+    entry_points={"console_scripts": ["walkman=walkman.__main__:main"]},
 )
