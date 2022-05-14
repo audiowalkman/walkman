@@ -11,7 +11,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="walkman",
+    name="audiowalkman",
     version=VERSION,
     license="GPL",
     description="play audio files in performance contexts",
