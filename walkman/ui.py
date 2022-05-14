@@ -32,6 +32,18 @@ class UIElement(abc.ABC):
         return tuple(event_list)
 
 
+class StopWatch(UIElement):
+    pass
+
+
+class Volume(UIElement):
+    pass
+
+
+class JumpToSecond(UIElement):
+    pass
+
+
 class Button(UIElement):
     def __init__(self, *args, button_kwargs={}, **kwargs):
         self.button_kwargs = button_kwargs
@@ -152,7 +164,10 @@ class GUI(object):
 
     def loop(self):
         window = sg.Window(
-            walkman.constants.NAME, self.layout, return_keyboard_events=True
+            walkman.constants.NAME,
+            self.layout,
+            return_keyboard_events=True,
+            resizable=True,
         )
 
         while True:
