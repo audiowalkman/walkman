@@ -1,5 +1,11 @@
 # walkman
 
+[![Build Status](https://circleci.com/gh/levinericzimmermann/walkman.svg?style=shield)](https://circleci.com/gh/levinericzimmermann/walkman)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![PyPI version](https://badge.fury.io/py/audiowalkman.svg)](https://badge.fury.io/py/audiowalkman)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+
 Walkman is a minimalistic, robust software to play audio files in performance contexts.
 It uses [pyo](http://ajaxsoundstudio.com/software/pyo/) as its backend and [pysimplegui](https://pypi.org/project/PySimpleGUI/) as its frontend.
 It can be configured by using [toml](https://toml.io/en/) files.
