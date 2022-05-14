@@ -13,6 +13,5 @@ parts += cdd
 
 [cdd]
 <= walkman-binary
-template = cdd.j2
 configuration-file-path = cdd.toml
 ```
