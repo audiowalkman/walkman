@@ -10,8 +10,6 @@ Please consult the following page for more information:
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-extras_require = {"testing": ["nose"]}
-
 setuptools.setup(
     name="walkman",
     version=VERSION,
@@ -37,7 +35,7 @@ setuptools.setup(
         "SoundFile==0.10.3.post1",
         "numpy==1.22.3",
     ],
-    extras_require=extras_require,
+    extras_require={"testing": ["nose"]},
     python_requires="==3.8",
     entry_points={"console_scripts": ["walkman=walkman.__main__:main"]},
 )
