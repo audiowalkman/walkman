@@ -20,8 +20,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Levin Eric Zimmermann",
-    author_email="tim.pauli@folkwang-uni.de, levin.eric.zimmermann@posteo.eu",
-    url="https://github.com/mutwo-org/mutwo",
+    author_email="levin.eric.zimmermann@posteo.eu",
     packages=["walkman"],
     setup_requires=[],
     install_requires=[
