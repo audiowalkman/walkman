@@ -338,6 +338,8 @@ class AudioHost(object):
 
         self.mixer = channel_mapping.to_mixer()
 
+        self.mixer.ctrl()
+
         sound_file_player_class = {
             "disk": SoundFilePlayerDisk,
             # "ram": SoundFilePlayerRAM,  # NotImplementedYet
