@@ -1,3 +1,5 @@
+"""Setup user interface for walkman"""
+
 import abc
 import dataclasses
 import datetime
@@ -46,20 +48,28 @@ class StopWatch(UIElement):
         self._last_time: typing.Optional[float] = None
         self.stop()
 
+    @staticmethod
+    def format_time(time_to_format: float) -> str:
+        _, minutes, seconds = str(datetime.timedelta(seconds=time_to_format)).split(":")
+        return f"{minutes}:{seconds[:2]}"
+
+    @property
+    def formatted_duration(self) -> str:
+        return StopWatch.format_time(
+            self.audio_host.sound_file_player.sound_file.duration_in_seconds
+        )
+
     @property
     def current_time(self) -> float:
         return time.time() - self._start_time
 
     @property
     def current_time_formatted(self) -> str:
-        _, minutes, seconds = str(datetime.timedelta(seconds=self.current_time)).split(
-            ":"
-        )
-        return f"{minutes}:{seconds[:2]}"
+        return StopWatch.format_time(self.current_time)
 
     @functools.cached_property
     def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
-        return sg.Text(self.current_time_formatted)
+        return sg.Text(self._get_update_string())
 
     def start(self):
         if self._last_time is not None:
@@ -76,8 +86,11 @@ class StopWatch(UIElement):
     def set_to(self, time_in_seconds: float):
         self._start_time = time.time() - time_in_seconds
 
+    def _get_update_string(self) -> str:
+        return f"{self.current_time_formatted} // {self.formatted_duration}"
+
     def update(self):
-        self.gui_element.update(self.current_time_formatted)
+        self.gui_element.update(self._get_update_string())
 
     def handle_event(self, _: str, __: dict):
         self.update()
@@ -289,6 +302,7 @@ class GUI(NestedUIElement):
             if event == sg.WINDOW_CLOSED or event == "Quit":
                 break
 
+            # Ignore timeout events
             if event != sg.TIMEOUT_EVENT:
                 walkman.constants.LOGGER.debug(
                     f"Catched event       = '{event}' \n"
@@ -303,6 +317,7 @@ class GUI(NestedUIElement):
 
 
 UI_CLASS_TUPLE = (SoundFileControl,)
+"""All used UI classes"""
 
 
 def audio_host_to_gui(audio_host: walkman.audio.AudioHost) -> GUI:
