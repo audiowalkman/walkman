@@ -1,6 +1,9 @@
 import abc
 import dataclasses
+import datetime
 import functools
+import operator
+import time
 import typing
 
 import PySimpleGUI as sg
@@ -31,16 +34,63 @@ class UIElement(abc.ABC):
             event_list.extend(self.keyboard_key_tuple)
         return tuple(event_list)
 
+    def tick(self):
+        # Called in every loop part
+        pass
+
 
 class StopWatch(UIElement):
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, key_tuple=("stop_watch",), **kwargs)
+        self._start_time = time.time()
+        self._last_time: typing.Optional[float] = None
+        self.stop()
+
+    @property
+    def current_time(self) -> float:
+        return time.time() - self._start_time
+
+    @property
+    def current_time_formatted(self) -> str:
+        _, minutes, seconds = str(datetime.timedelta(seconds=self.current_time)).split(
+            ":"
+        )
+        return f"{minutes}:{seconds[:2]}"
+
+    @functools.cached_property
+    def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
+        return sg.Text(self.current_time_formatted)
+
+    def start(self):
+        if self._last_time is not None:
+            self.set_to(self._last_time)
+            self._last_time = None
+
+    def stop(self):
+        self._last_time = self.current_time
+
+    def reset(self):
+        self._start_time = time.time()
+        self.update()
+
+    def set_to(self, time_in_seconds: float):
+        self._start_time = time.time() - time_in_seconds
+
+    def update(self):
+        self.gui_element.update(self.current_time_formatted)
+
+    def handle_event(self, _: str, __: dict):
+        self.update()
+
+    def tick(self):
+        self.update()
 
 
 class Volume(UIElement):
     pass
 
 
-class JumpToSecond(UIElement):
+class JumpToTime(UIElement):
     pass
 
 
@@ -55,7 +105,7 @@ class Button(UIElement):
 
 
 class StartStopButton(Button):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, stop_watch: StopWatch, *args, **kwargs):
         super().__init__(
             *args,
             button_kwargs={},
@@ -64,19 +114,27 @@ class StartStopButton(Button):
             **kwargs,
         )
         self.is_playing = 0
+        self.stop_watch = stop_watch
 
     def handle_event(self, _: str, __: dict):
         if self.is_playing:
             self.audio_host.stop()
+            self.stop_watch.stop()
         else:
             self.audio_host.start()
+            self.stop_watch.start()
             if not self.audio_host.sound_file_player.is_playing:
                 self.audio_host.sound_file_player.play()
         self.is_playing = not self.is_playing
 
+    def tick(self):
+        if self.is_playing:
+            self.stop_watch.tick()
+
 
 class SelectSoundFileMenu(UIElement):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, stop_watch: StopWatch, *args, **kwargs):
+        self.stop_watch = stop_watch
         self.combo_key = "select_sound_file"
 
         self.left_key = "Left:113"
@@ -117,6 +175,8 @@ class SelectSoundFileMenu(UIElement):
             self.gui_element.update(value=sound_file_name)
         sound_file = self.name_to_sound_file_dict[sound_file_name]
         self.audio_host.sound_file_player.sound_file = sound_file
+        self.stop_watch.reset()
+        self.stop_watch.stop()
 
 
 class DuplicateEventError(Exception):
@@ -124,17 +184,15 @@ class DuplicateEventError(Exception):
         super().__init__(f"Event '{event}' has been defined twice!")
 
 
-class GUI(object):
+class NestedUIElement(UIElement):
     def __init__(
         self,
-        audio_host: walkman.audio.AudioHost,
+        audio_host,
         ui_element_sequence: typing.Sequence[UIElement],
-        theme: str = "DarkBlack",
     ):
-        sg.theme(theme)
-
-        self.audio_host = audio_host
+        super().__init__(audio_host=audio_host)
         self.ui_element_tuple = tuple(ui_element_sequence)
+
         event_to_ui_element_dict = {}
         for ui_element in self.ui_element_tuple:
             for event in ui_element.event_tuple:
@@ -143,6 +201,68 @@ class GUI(object):
                 else:
                     raise DuplicateEventError(event)
         self.event_to_ui_element_dict = event_to_ui_element_dict
+
+    @functools.cached_property
+    def event_tuple(self) -> typing.Tuple[str, ...]:
+        return functools.reduce(
+            operator.add,
+            (ui_element.event_tuple for ui_element in self.ui_element_tuple),
+        )
+
+    def handle_event(self, event: str, value_dict: dict):
+        try:
+            ui_element = self.event_to_ui_element_dict[event]
+        except KeyError:
+            pass
+        else:
+            return ui_element.handle_event(event, value_dict)
+
+    def tick(self):
+        for ui_element in self.ui_element_tuple:
+            ui_element.tick()
+
+    @functools.cached_property
+    def gui_element(self) -> list:
+        return [
+            ui_element.gui_element
+            for ui_element in self.ui_element_tuple
+            if ui_element.gui_element
+        ]
+
+
+class SoundFileControl(NestedUIElement):
+    def __init__(
+        self,
+        audio_host,
+    ):
+        self.stop_watch = StopWatch(audio_host)
+        self.start_stop_button = StartStopButton(self.stop_watch, audio_host)
+        self.select_sound_file_menu = SelectSoundFileMenu(self.stop_watch, audio_host)
+
+        ui_element_sequence = (
+            self.stop_watch,
+            self.start_stop_button,
+            self.select_sound_file_menu,
+        )
+
+        super().__init__(audio_host, ui_element_sequence)
+
+    def tick(self):
+        for ui_element in self.ui_element_tuple:
+            # Stop watch tick is handled in StartStopButton
+            if ui_element != self.stop_watch:
+                ui_element.tick()
+
+
+class GUI(NestedUIElement):
+    def __init__(
+        self,
+        audio_host: walkman.audio.AudioHost,
+        ui_element_sequence: typing.Sequence[UIElement],
+        theme: str = "DarkBlack",
+    ):
+        super().__init__(audio_host, ui_element_sequence)
+        sg.theme(theme)
 
     @property
     def layout(self) -> list:
@@ -154,14 +274,6 @@ class GUI(object):
             ]
         ]
 
-    def handle_event(self, event: str, value_dict: dict):
-        try:
-            ui_element = self.event_to_ui_element_dict[event]
-        except KeyError:
-            pass
-        else:
-            return ui_element.handle_event(event, value_dict)
-
     def loop(self):
         window = sg.Window(
             walkman.constants.NAME,
@@ -171,23 +283,26 @@ class GUI(object):
         )
 
         while True:
-            event, value_dict = window.read()
+            event, value_dict = window.read(timeout=0.85)
 
             # See if user wants to quit or window was closed
             if event == sg.WINDOW_CLOSED or event == "Quit":
                 break
 
-            walkman.constants.LOGGER.debug(
-                f"Catched event       = '{event}' \n"
-                f"with value_dict     = '{value_dict}'\n."
-            )
-            self.handle_event(event, value_dict)
+            if event != sg.TIMEOUT_EVENT:
+                walkman.constants.LOGGER.debug(
+                    f"Catched event       = '{event}' \n"
+                    f"with value_dict     = '{value_dict}'\n."
+                )
+                self.handle_event(event, value_dict)
+
+            self.tick()
 
         self.audio_host.close()
         window.close()
 
 
-UI_CLASS_TUPLE = (StartStopButton, SelectSoundFileMenu)
+UI_CLASS_TUPLE = (SoundFileControl,)
 
 
 def audio_host_to_gui(audio_host: walkman.audio.AudioHost) -> GUI:
