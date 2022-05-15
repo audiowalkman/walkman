@@ -13,9 +13,14 @@ It can be configured by using [toml](https://toml.io/en/) files.
 
 ## Installation
 
+walkman is available on pip:
+
 ```bash
-pip3 install walkman
+pip3 install audiowalkman
 ```
+
+You can also use [buildout](https://buildout.readthedocs.io/) for creating an isolated stable environment.
+Please consult the [respective README](https://github.com/levinericzimmermann/walkman/blob/main/buildout/README.md).
 
 ## Configuration file
 
