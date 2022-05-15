@@ -328,6 +328,8 @@ class AudioHost(object):
     ):
         assert sound_file_tuple
 
+        self._is_playing = False
+
         if channel_mapping is None:
             channel_mapping = {
                 index: index
@@ -390,14 +392,20 @@ class AudioHost(object):
             if mixer_channel := self.mixer[output_channel]:
                 mixer_channel[0].out(output_channel)
 
+    @property
+    def is_playing(self) -> bool:
+        return self._is_playing
+
     def start(self):
         self.server.start()
         self.sound_file_player.amplitude = 1
+        self._is_playing = True
 
     def stop(self):
         self.sound_file_player.amplitude = 0
         time.sleep(self.sound_file_player.delay + self.SLEEP_TOLERANCE)
         self.server.stop()
+        self._is_playing = False
 
     def close(self):
         self.stop()

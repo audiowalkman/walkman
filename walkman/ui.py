@@ -7,6 +7,7 @@ import functools
 import operator
 import time
 import typing
+import warnings
 
 import PySimpleGUI as sg
 
@@ -103,10 +104,6 @@ class Volume(UIElement):
     pass
 
 
-class JumpToTime(UIElement):
-    pass
-
-
 class Button(UIElement):
     def __init__(self, *args, button_kwargs={}, **kwargs):
         self.button_kwargs = button_kwargs
@@ -117,11 +114,90 @@ class Button(UIElement):
         return sg.Button(key=self.key_tuple[0], **self.button_kwargs)
 
 
+class TooLargeTimeWarning(Warning):
+    def __init__(self, time: float):
+        super().__init__(
+            f"Can't jump to given time: {time} seconds longer than soundfile"
+        )
+
+
+class JumpToTimeButton(Button):
+    def __init__(
+        self,
+        stop_watch: StopWatch,
+        jump_to_time_input_minutes_key: str,
+        jump_to_time_input_seconds_key: str,
+        *args,
+        **kwargs,
+    ):
+        self.stop_watch = stop_watch
+        self.key = "jump_to_time_button"
+        self.jump_to_time_input_minutes_key = jump_to_time_input_minutes_key
+        self.jump_to_time_input_seconds_key = jump_to_time_input_seconds_key
+        super().__init__(
+            *args,
+            key_tuple=(self.key,),
+            button_kwargs={"button_text": "JUMP TO"},
+            **kwargs,
+        )
+
+    def handle_event(self, _: str, value_dict: dict):
+        minutes = value_dict[self.jump_to_time_input_minutes_key]
+        seconds = value_dict[self.jump_to_time_input_seconds_key]
+        time = (int(minutes) * 60) + float(seconds)
+        if time <= (
+            sound_file_duration := self.audio_host.sound_file_player.sound_file.duration_in_seconds
+        ):
+            self.audio_host.sound_file_player.jump_to(time)
+            self.stop_watch.set_to(time)
+            if not self.audio_host.is_playing:
+                self.stop_watch.stop()
+            self.stop_watch.update()
+        else:
+            warnings.warn(TooLargeTimeWarning(time - sound_file_duration))
+
+
+class FrozenText(UIElement):
+    def __init__(self, *args, text_kwargs={}, **kwargs):
+        self.text_kwargs = text_kwargs
+        super().__init__(*args, **kwargs)
+
+    @functools.cached_property
+    def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
+        return sg.Text(**self.text_kwargs)
+
+    def handle_event(self, _: str, __: dict):
+        pass
+
+
+class JumpToTimeInput(UIElement):
+    @functools.cached_property
+    def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
+        return sg.InputText(
+            key=self.key_tuple[0], default_text="0", enable_events=False, size=(4, 1)
+        )
+
+    def handle_event(self, _: str, __: dict):
+        pass
+
+
+class JumpToTimeInputMinutes(JumpToTimeInput):
+    def __init__(self, *args, **kwargs):
+        self.key = "jump_to_time_input_minutes"
+        super().__init__(*args, key_tuple=(self.key,), **kwargs)
+
+
+class JumpToTimeInputSeconds(JumpToTimeInput):
+    def __init__(self, *args, **kwargs):
+        self.key = "jump_to_time_input_seconds"
+        super().__init__(*args, key_tuple=(self.key,), **kwargs)
+
+
 class StartStopButton(Button):
     def __init__(self, stop_watch: StopWatch, *args, **kwargs):
         super().__init__(
             *args,
-            button_kwargs={},
+            button_kwargs={"button_text": "START // STOP"},
             key_tuple=("start_stop",),
             keyboard_key_tuple=("space:65",),
             **kwargs,
@@ -243,7 +319,33 @@ class NestedUIElement(UIElement):
         ]
 
 
-class SoundFileControl(NestedUIElement):
+class JumpToTimeControl(NestedUIElement):
+    def __init__(
+        self,
+        stop_watch: StopWatch,
+        audio_host,
+    ):
+        self.jump_to_time_input_minutes = JumpToTimeInputMinutes(audio_host)
+        self.jump_to_time_input_seconds = JumpToTimeInputSeconds(audio_host)
+        self.jump_to_time_button = JumpToTimeButton(
+            stop_watch,
+            self.jump_to_time_input_minutes.key,
+            self.jump_to_time_input_seconds.key,
+            audio_host,
+        )
+
+        ui_element_sequence = (
+            self.jump_to_time_button,
+            self.jump_to_time_input_minutes,
+            FrozenText(audio_host, text_kwargs={"text": "MIN"}),
+            self.jump_to_time_input_seconds,
+            FrozenText(audio_host, text_kwargs={"text": "SEC"}),
+        )
+
+        super().__init__(audio_host, ui_element_sequence)
+
+
+class Transport(NestedUIElement):
     def __init__(
         self,
         audio_host,
@@ -253,9 +355,9 @@ class SoundFileControl(NestedUIElement):
         self.select_sound_file_menu = SelectSoundFileMenu(self.stop_watch, audio_host)
 
         ui_element_sequence = (
-            self.stop_watch,
             self.start_stop_button,
             self.select_sound_file_menu,
+            self.stop_watch,
         )
 
         super().__init__(audio_host, ui_element_sequence)
@@ -265,6 +367,24 @@ class SoundFileControl(NestedUIElement):
             # Stop watch tick is handled in StartStopButton
             if ui_element != self.stop_watch:
                 ui_element.tick()
+
+
+class SoundFileControl(NestedUIElement):
+    def __init__(
+        self,
+        audio_host,
+    ):
+        self.transport = Transport(audio_host)
+        self.jump_to_time_control = JumpToTimeControl(
+            self.transport.stop_watch, audio_host
+        )
+
+        ui_element_sequence = (
+            self.transport,
+            self.jump_to_time_control,
+        )
+
+        super().__init__(audio_host, ui_element_sequence)
 
 
 class GUI(NestedUIElement):
