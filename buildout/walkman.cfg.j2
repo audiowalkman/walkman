@@ -1,6 +1,10 @@
 [buildout]
 parts = walkman
+versions = versions
 
 [walkman]
 recipe = zc.recipe.egg
 eggs = audiowalkman
+
+[versions]
+audiowalkman = {{ audiowalkman_version }}
