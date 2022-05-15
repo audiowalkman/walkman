@@ -199,7 +199,7 @@ class StartStopButton(Button):
             *args,
             button_kwargs={"button_text": "START // STOP"},
             key_tuple=("start_stop",),
-            keyboard_key_tuple=("space:65",),
+            keyboard_key_tuple=(" ",),
             **kwargs,
         )
         self.is_playing = 0
