@@ -1,3 +1,5 @@
+"""Parse toml configuration files"""
+
 import tomli
 
 import walkman
