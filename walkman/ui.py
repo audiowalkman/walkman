@@ -413,6 +413,7 @@ class GUI(NestedUIElement):
             self.layout,
             return_keyboard_events=True,
             resizable=True,
+            scaling=3,
         )
 
         while True:
