@@ -1,4 +1,4 @@
-import tomlkit
+import tomli
 
 import walkman
 
@@ -17,7 +17,7 @@ class NoSoundFileError(Exception):
 def toml_str_to_audio_host(
     toml_str: str = "",
 ) -> walkman.audio.AudioHost:
-    toml_dictionary = tomlkit.parse(toml_str)
+    toml_dictionary = tomli.loads(toml_str)
 
     try:
         sound_file_data_list = toml_dictionary[SOUNDFILE_TABLE_NAME]
@@ -30,7 +30,12 @@ def toml_str_to_audio_host(
             walkman.audio.SoundFile(sound_file_name, **sound_file_data)
         )
 
-    audio_data = toml_dictionary.get(AUDIO_TABLE_NAME, {})
+    try:
+        audio_data_toml = toml_dictionary[AUDIO_TABLE_NAME]
+    except KeyError:
+        audio_data = {}
+    else:
+        audio_data = audio_data_toml
     audio_data.update({"sound_file_tuple": tuple(sound_file_list)})
 
     audio_host = walkman.audio.AudioHost(**audio_data)

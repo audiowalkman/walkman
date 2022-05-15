@@ -25,6 +25,20 @@ SampleType = str
 class ChannelMapping(typing.Dict[int, int]):
     """Map sound file channel to physical outputs"""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Hack to ensure key/values are integer
+        key_to_remove_list = []
+        update_dict = {}
+        for key, value in self.items():
+            if not isinstance(key, int):
+                key_to_remove_list.append(key)
+            update_dict[int(key)] = int(value)
+        self.update(update_dict)
+        for key in key_to_remove_list:
+            del self[key]
+
     @property
     def output_channel_list(self) -> typing.List[int]:
         return list(self.values())
@@ -322,7 +336,7 @@ class AudioHost(object):
                 )
             }
 
-        if type(channel_mapping) == dict:
+        if not isinstance(channel_mapping, ChannelMapping):
             channel_mapping = ChannelMapping(channel_mapping)
 
         self.sound_file_tuple = self._standardize_sound_file_tuple(sound_file_tuple)
