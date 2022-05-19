@@ -78,6 +78,7 @@ class SoundFile(object):
         name: str,
         path: str,
         loop: bool = False,
+        decibel: float = 0,
         # In case SoundFile is available as a temporary file (because
         # channels have been added) we have to pass the
         # temporary_file to the object in order to avoid that
@@ -88,6 +89,19 @@ class SoundFile(object):
         self.path = str(path)
         self.loop = loop
         self.temporary_file = temporary_file
+        self.decibel = decibel
+
+    @staticmethod
+    def decibel_to_amplitude_ratio(
+        decibel: float, reference_amplitude: float = 1
+    ) -> float:
+        """Convert decibel to amplitude ratio.
+
+        :param decibel: The decibel number that shall be converted.
+        :param reference_amplitude: The amplitude for decibel == 0.
+
+        """
+        return float(reference_amplitude * (10 ** (decibel / 20)))
 
     def close(self):
         if self.temporary_file is not None:
@@ -129,6 +143,10 @@ class SoundFile(object):
     @functools.cached_property
     def sample_type(self) -> SampleType:
         return self.information_tuple[5]
+
+    @functools.cached_property
+    def amplitude(self) -> float:
+        return SoundFile.decibel_to_amplitude_ratio(self.decibel)
 
     def _expand_sound_file(self, path: str, channel_to_add_count: int):
         original_sound_file, sampling_rate = soundfile.read(self.path)
@@ -234,6 +252,24 @@ class SoundFilePlayerDisk(SoundFilePlayer):
         self.sig_to.value = value
 
     @property
+    def amplitude_factor(self) -> float:
+        try:
+            sound_file_player = self._sound_file_player
+        except AttributeError:
+            return 0
+        else:
+            return sound_file_player.mul
+
+    @amplitude_factor.setter
+    def amplitude_factor(self, amplitude_factor: float):
+        try:
+            sound_file_player = self._sound_file_player
+        except AttributeError:
+            pass
+        else:
+            sound_file_player.mul = amplitude_factor
+
+    @property
     def is_playing(self) -> bool:
         is_playing = self._is_playing
         try:
@@ -295,12 +331,12 @@ class SoundFilePlayerDisk(SoundFilePlayer):
     def play(self, duration: float = 0, delay: float = 0):
         self._is_playing = True
         self._sound_file_player.play(dur=duration, delay=delay)
-        self.amplitude = 1
+        self.amplitude_factor = 1
 
     def stop(self):
         self._is_playing = False
         self._sound_file_player.stop(wait=self.delay)
-        self.amplitude = 0
+        self.amplitude_factor = 0
 
     @reset_sound_file_attribute
     def jump_to(self, time_in_seconds: float):
@@ -413,7 +449,7 @@ class AudioHost(object):
 
     def start(self):
         self.server.start()
-        self.sound_file_player.amplitude = 1
+        self.sound_file_player.amplitude = self.sound_file_player.sound_file.amplitude
         self._is_playing = True
 
     def stop(self):
