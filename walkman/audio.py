@@ -22,7 +22,7 @@ FileFormat = str
 SampleType = str
 
 
-class ChannelMapping(typing.Dict[int, int]):
+class ChannelMapping(typing.Dict[int, typing.Tuple[int, ...]]):
     """Map sound file channel to physical outputs"""
 
     def __init__(self, *args, **kwargs):
@@ -34,18 +34,33 @@ class ChannelMapping(typing.Dict[int, int]):
         for key, value in self.items():
             if not isinstance(key, int):
                 key_to_remove_list.append(key)
-            update_dict[int(key)] = int(value)
+            if isinstance(value, (str, int)):
+                output_channel_list = [value]
+            else:
+                output_channel_list = value
+            output_channel_tuple = tuple(
+                int(output_channel) for output_channel in output_channel_list
+            )
+            update_dict[int(key)] = output_channel_tuple
         self.update(update_dict)
         for key in key_to_remove_list:
             del self[key]
 
     @property
-    def output_channel_list(self) -> typing.List[int]:
-        return list(self.values())
+    def output_channel_tuple_tuple(self) -> typing.Tuple[typing.Tuple[int, ...], ...]:
+        return tuple(self.values())
+
+    @property
+    def output_channel_set(self) -> typing.Set[int, ...]:
+        output_channel_set = set([])
+        for output_channel_tuple in self.output_channel_tuple_tuple:
+            for output_channel in output_channel_tuple:
+                output_channel_set.add(output_channel)
+        return output_channel_set
 
     @property
     def maxima_output_channel(self) -> int:
-        return max(self.output_channel_list) + 1
+        return max(self.output_channel_set) + 1
 
     def to_mixer(self) -> pyo.Mixer:
         return pyo.Mixer(outs=self.maxima_output_channel)
@@ -353,7 +368,6 @@ class AudioHost(object):
         ).boot()
 
         self.mixer = channel_mapping.to_mixer()
-
         self.mixer.ctrl()
 
         sound_file_player_class = {
@@ -381,14 +395,15 @@ class AudioHost(object):
 
     def _add_sound_file_player_to_mixer(self, channel_mapping: ChannelMapping):
         for index, input_channel in enumerate(channel_mapping):
-            output_channel = channel_mapping[input_channel]
+            output_channel_tuple = channel_mapping[input_channel]
             if (
                 pyo_channel := self.sound_file_player.pyo_object[input_channel]
             ) is not None:
                 self.mixer.addInput(index, pyo_channel)
-                self.mixer.setAmp(index, output_channel, 1)
+                for output_channel in output_channel_tuple:
+                    self.mixer.setAmp(index, output_channel, 1)
 
-        for output_channel in set(channel_mapping.values()):
+        for output_channel in channel_mapping.output_channel_set:
             if mixer_channel := self.mixer[output_channel]:
                 mixer_channel[0].out(output_channel)
 
