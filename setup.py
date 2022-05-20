@@ -1,18 +1,15 @@
 import setuptools  # type: ignore
 
-MAJOR, MINOR, PATCH = 0, 3, 0
-VERSION = f"{MAJOR}.{MINOR}.{PATCH}"
-"""This project uses semantic versioning.
-Please consult the following page for more information:
-    https://semver.org/
-"""
+version = {}
+with open("walkman/version.py") as fp:
+    exec(fp.read(), version)
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="audiowalkman",
-    version=VERSION,
+    version=version['__version__'],
     license="GPL",
     description="play audio files in performance contexts",
     long_description=long_description,
