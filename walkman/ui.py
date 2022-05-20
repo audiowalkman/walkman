@@ -47,6 +47,7 @@ class StopWatch(UIElement):
         super().__init__(*args, key_tuple=("stop_watch",), **kwargs)
         self._start_time = time.time()
         self._last_time: typing.Optional[float] = None
+        self._display_time: float = 0
         self.stop()
 
     @staticmethod
@@ -67,6 +68,10 @@ class StopWatch(UIElement):
     @property
     def current_time_formatted(self) -> str:
         return StopWatch.format_time(self.current_time)
+
+    @property
+    def display_time(self) -> float:
+        return self._display_time
 
     @functools.cached_property
     def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
@@ -91,6 +96,7 @@ class StopWatch(UIElement):
         return f"{self.current_time_formatted} // {self.formatted_duration}"
 
     def update(self):
+        self._display_time = self.current_time
         self.gui_element.update(self._get_update_string())
 
     def handle_event(self, _: str, __: dict):
@@ -257,9 +263,14 @@ class SelectSoundFileMenu(UIElement):
         sound_file_name = value_dict[self.combo_key]
         if event != self.combo_key:
             sound_file_index = self.value_tuple.index(sound_file_name)
-            new_sound_file_index = (
-                sound_file_index + {self.left_key: -1, self.right_key: 1}[event]
-            ) % self.value_count
+            # When current duration != 0 and one left key: jump to beginning
+            # of current soundfile.
+            if event == self.left_key and int(self.stop_watch.display_time) != 0:
+                new_sound_file_index = sound_file_index
+            else:
+                new_sound_file_index = (
+                    sound_file_index + {self.left_key: -1, self.right_key: 1}[event]
+                ) % self.value_count
             sound_file_name = self.value_tuple[new_sound_file_index]
             self.gui_element.update(value=sound_file_name)
         sound_file = self.name_to_sound_file_dict[sound_file_name]
