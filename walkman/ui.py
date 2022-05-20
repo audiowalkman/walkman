@@ -56,9 +56,13 @@ class StopWatch(UIElement):
         return f"{minutes}:{seconds[:2]}"
 
     @property
+    def duration(self) -> float:
+        return self.audio_host.sound_file_player.sound_file.duration_in_seconds
+
+    @property
     def formatted_duration(self) -> str:
         return StopWatch.format_time(
-            self.audio_host.sound_file_player.sound_file.duration_in_seconds
+            self.duration
         )
 
     @property
@@ -96,8 +100,9 @@ class StopWatch(UIElement):
         return f"{self.current_time_formatted} // {self.formatted_duration}"
 
     def update(self):
-        self._display_time = self.current_time
-        self.gui_element.update(self._get_update_string())
+        if (current_time := self.current_time) <= self.duration:
+            self._display_time = current_time
+            self.gui_element.update(self._get_update_string())
 
     def handle_event(self, _: str, __: dict):
         self.update()
