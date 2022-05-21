@@ -89,7 +89,7 @@ class SoundFile(object):
         self.path = str(path)
         self.loop = loop
         self.temporary_file = temporary_file
-        self.decibel = decibel
+        self._decibel = decibel
 
     @staticmethod
     def decibel_to_amplitude_ratio(
@@ -144,9 +144,13 @@ class SoundFile(object):
     def sample_type(self) -> SampleType:
         return self.information_tuple[5]
 
-    @functools.cached_property
+    @property
     def amplitude(self) -> float:
         return SoundFile.decibel_to_amplitude_ratio(self.decibel)
+
+    @property
+    def decibel(self) -> float:
+        return self._decibel
 
     def _expand_sound_file(self, path: str, channel_to_add_count: int):
         original_sound_file, sampling_rate = soundfile.read(self.path)
@@ -180,6 +184,7 @@ class SoundFile(object):
                 path=new_path,
                 loop=self.loop,
                 temporary_file=temporary_file,
+                decibel=self.decibel,
             )
             return expanded_sound_file
         elif difference < 0:
@@ -309,6 +314,7 @@ class SoundFilePlayerDisk(SoundFilePlayer):
             sound_file_player.setPath(sound_file.path)
         finally:
             self.loop = sound_file.loop
+            self.amplitude = sound_file.amplitude
         self._sound_file = sound_file
 
     @property
@@ -449,7 +455,6 @@ class AudioHost(object):
 
     def start(self):
         self.server.start()
-        self.sound_file_player.amplitude = self.sound_file_player.sound_file.amplitude
         self._is_playing = True
 
     def stop(self):
