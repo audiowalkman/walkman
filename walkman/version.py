@@ -1,2 +1,2 @@
-MAJOR, MINOR, PATCH = 0, 4, 0
+MAJOR, MINOR, PATCH = 0, 4, 1
 __version__ = f"{MAJOR}.{MINOR}.{PATCH}"
