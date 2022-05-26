@@ -7,6 +7,7 @@ import walkman
 
 SOUNDFILE_TABLE_NAME = "soundfile"
 AUDIO_TABLE_NAME = "audio"
+REVERB_TABLE_NAME = "reverb"
 
 
 class NoSoundFileError(Exception):
@@ -38,7 +39,15 @@ def toml_str_to_audio_host(
         audio_data = {}
     else:
         audio_data = audio_data_toml
-    audio_data.update({"sound_file_tuple": tuple(sound_file_list)})
+
+    try:
+        reverb_data_toml = toml_dictionary[REVERB_TABLE_NAME]
+    except KeyError:
+        reverb_data_toml = {}
+    finally:
+        reverb = walkman.audio.Reverb(**reverb_data_toml)
+
+    audio_data.update({"sound_file_tuple": tuple(sound_file_list), "reverb": reverb})
 
     audio_host = walkman.audio.AudioHost(**audio_data)
 

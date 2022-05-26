@@ -70,6 +70,16 @@ class NotEnoughChannelWarning(Warning):
     """Hint if user given soundfiles don't have enough channels"""
 
 
+def decibel_to_amplitude_ratio(decibel: float, reference_amplitude: float = 1) -> float:
+    """Convert decibel to amplitude ratio.
+
+    :param decibel: The decibel number that shall be converted.
+    :param reference_amplitude: The amplitude for decibel == 0.
+
+    """
+    return float(reference_amplitude * (10 ** (decibel / 20)))
+
+
 class SoundFile(object):
     """Initialize a sound file"""
 
@@ -90,18 +100,6 @@ class SoundFile(object):
         self.loop = loop
         self.temporary_file = temporary_file
         self._decibel = decibel
-
-    @staticmethod
-    def decibel_to_amplitude_ratio(
-        decibel: float, reference_amplitude: float = 1
-    ) -> float:
-        """Convert decibel to amplitude ratio.
-
-        :param decibel: The decibel number that shall be converted.
-        :param reference_amplitude: The amplitude for decibel == 0.
-
-        """
-        return float(reference_amplitude * (10 ** (decibel / 20)))
 
     def close(self):
         if self.temporary_file is not None:
@@ -146,7 +144,7 @@ class SoundFile(object):
 
     @property
     def amplitude(self) -> float:
-        return SoundFile.decibel_to_amplitude_ratio(self.decibel)
+        return decibel_to_amplitude_ratio(self.decibel)
 
     @property
     def decibel(self) -> float:
@@ -362,14 +360,48 @@ class VolumeControl(object):
     pass
 
 
+class Reverb(object):
+    def __init__(
+        self, sound_file_path: typing.Optional[str] = None, decibel: float = 0
+    ):
+        self._sound_file_path = sound_file_path
+        self._decibel = decibel
+
+    @property
+    def sound_file_path(self) -> typing.Optional[str]:
+        return self._sound_file_path
+
+    @property
+    def amplitude(self) -> float:
+        return decibel_to_amplitude_ratio(self.decibel)
+
+    @property
+    def decibel(self) -> float:
+        return self._decibel
+
+
+class PyoObjectMixer(pyo.PyoObject):
+    def __init__(self, base_objs: list):
+        super().__init__()
+        self._base_objs = base_objs
+
+
+def get_next_mixer_index(mixer: pyo.Mixer) -> int:
+    try:
+        index = max(mixer.getKeys()) + 1
+    except ValueError:
+        index = 0
+    return index
+
+
 class AudioHost(object):
     """Wrapper for pyo.Server and pyo.Mixer.
 
     Simplifies server API and adds volumes controls.
     """
 
-    # Add slow delay to wait delay, in order to ensure
-    # that sound file is faded out already
+    # Add slow delay to wait, in order to ensure
+    # sound file is already faded out
     SLEEP_TOLERANCE = 0.1
 
     def __init__(
@@ -382,6 +414,7 @@ class AudioHost(object):
         channel_mapping: typing.Optional[
             typing.Union[ChannelMapping, typing.Dict[int, int]]
         ] = None,
+        reverb: Reverb = Reverb(),
     ):
         assert sound_file_tuple
 
@@ -409,6 +442,11 @@ class AudioHost(object):
             jackname=walkman.constants.NAME,
         ).boot()
 
+        # All modules mixed together
+        self.module_mixer = channel_mapping.to_mixer()
+
+        # Sending data from module mixer to physical output.
+        # Adding reverb!
         self.mixer = channel_mapping.to_mixer()
         self.mixer.ctrl()
 
@@ -419,7 +457,10 @@ class AudioHost(object):
 
         self.sound_file_player = sound_file_player_class(self.sound_file_tuple[0])
 
-        self._add_sound_file_player_to_mixer(channel_mapping)
+        self._add_sound_file_player_to_module_mixer(channel_mapping)
+        self._add_module_mixer_to_mixer(channel_mapping)
+        self._add_reverb_to_mixer(reverb, channel_mapping)
+        self._send_mixer_to_physical_outputs()
 
     def _standardize_sound_file_tuple(
         self, sound_file_tuple: typing.Tuple[SoundFile, ...]
@@ -435,19 +476,56 @@ class AudioHost(object):
             )
         return tuple(standardized_sound_file_list)
 
-    def _add_sound_file_player_to_mixer(self, channel_mapping: ChannelMapping):
+    def _add_sound_file_player_to_module_mixer(self, channel_mapping: ChannelMapping):
         for index, input_channel in enumerate(channel_mapping):
             output_channel_tuple = channel_mapping[input_channel]
             if (
                 pyo_channel := self.sound_file_player.pyo_object[input_channel]
             ) is not None:
-                self.mixer.addInput(index, pyo_channel)
+                self.module_mixer.addInput(index, pyo_channel)
                 for output_channel in output_channel_tuple:
-                    self.mixer.setAmp(index, output_channel, 1)
+                    self.module_mixer.setAmp(index, output_channel, 1)
 
+    def _add_reverb_to_mixer(self, reverb: Reverb, channel_mapping: ChannelMapping):
+        if reverb.sound_file_path:
+            object_list = []
+            for output_channel in channel_mapping.output_channel_set:
+                if mixer_channel := self.module_mixer[output_channel]:
+                    object_list.append(mixer_channel[0])
+                else:
+                    pass
+
+            input_object = PyoObjectMixer(object_list).play()
+            input_object_with_denorm = pyo.Denorm(input_object).play()
+
+            self.reverb = pyo.CvlVerb(
+                input_object_with_denorm,
+                impulse=reverb.sound_file_path,
+                bal=1,
+                size=1024,
+                mul=reverb.amplitude,
+            )
+
+            self.reverb.ctrl()
+
+            index = get_next_mixer_index(self.mixer)
+            for channel in range(len(object_list)):
+                self.mixer.addInput(index, self.reverb[channel])
+                self.mixer.setAmp(index, channel, 1)
+                index += 1
+
+    def _add_module_mixer_to_mixer(self, channel_mapping: ChannelMapping):
+        index = get_next_mixer_index(self.mixer)
         for output_channel in channel_mapping.output_channel_set:
-            if mixer_channel := self.mixer[output_channel]:
-                mixer_channel[0].out(output_channel)
+            if mixer_channel := self.module_mixer[output_channel]:
+                self.mixer.addInput(index, mixer_channel[0])
+                self.mixer.setAmp(index, output_channel, 1)
+                index += 1
+
+    def _send_mixer_to_physical_outputs(self):
+        for channel_index, mixer_channel in enumerate(self.mixer):
+            if mixer_channel:
+                mixer_channel[0].out(channel_index)
 
     @property
     def is_playing(self) -> bool:
