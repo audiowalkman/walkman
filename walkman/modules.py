@@ -207,7 +207,7 @@ class ModuleWithDecibel(Module):
         # 'decibel'
         self._amplitude = pyo.Sig(0)
         self._decibel_to_amplitude = pyo.DBToA(self._amplitude)
-        self._decibel_signal_to = pyo.SigTo(self._decibel_to_amplitude)
+        self._decibel_signal_to = pyo.SigTo(self._decibel_to_amplitude, time=0.015)
 
     def _initialise(self, decibel: walkman.Parameter = -6, **kwargs):  # type: ignore
         self._amplitude.setValue(decibel.value)
