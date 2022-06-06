@@ -1,5 +1,6 @@
 import functools
 import typing
+import warnings
 
 import walkman
 
@@ -11,28 +12,70 @@ class Cue(object):
         self,
         module_dict: walkman.ModuleDict,
         name: str,
-        **kwargs: typing.Union[dict, bool]
+        **kwargs: typing.Dict[int, typing.Union[dict, bool]],
     ):
         self._is_playing = False
         self._module_dict = module_dict
         self._name = name
-        self._module_name_to_initialise_kwargs_dict = kwargs
+        self._module_name_to_replication_configuration = kwargs
+        # We can't call '_set_duration' when initialising a Cue,
+        # because the cue won't be activated yet and the modules
+        # will return wrong values for 'duration'.
         self._duration = None
+
+    def _set_duration(self):
+        if self._duration is None:
+            duration_list = []
+            for module_name in self.active_module_name_set:
+                for module in self._module_dict[module_name]:
+                    duration_list.append(module.duration)
+            try:
+                duration = max(duration_list)
+            except ValueError:
+                duration = 0
+            self._duration = duration
+
+    def _initialise_module_tuple(
+        self,
+        module_tuple: typing.Tuple[walkman.Module, ...],
+        replication_configuration: typing.Dict[int, typing.Dict[str, typing.Any]],
+    ):
+        for (
+            module_replication_index,
+            initialise_kwargs,
+        ) in replication_configuration.items():
+            try:
+                module = module_tuple[module_replication_index]
+            except IndexError:
+                warnings.warn(
+                    f"Module {module_name} only has {len(module_tuple)} "
+                    f"replications. Replication '{module_replication_index}'"
+                    f" doesn't exist."
+                )
+            else:
+                try:
+                    module.initialise(**initialise_kwargs)
+                # Instead of providing kwargs, we can also simply
+                # write 'false', to stop modules with 'auto_stop = false'
+                except TypeError:
+                    if initialise_kwargs is False:
+                        module.stop()
 
     @functools.cached_property
     def active_module_name_set(self) -> typing.Set[str]:
         return set(
             module_name
-            for module_name in self._module_name_to_initialise_kwargs_dict.keys()
+            for module_name in self.module_name_to_replication_configuration.keys()
             if module_name in self._module_dict
         )
 
     @functools.cached_property
     def active_module_tuple(self) -> typing.Tuple[walkman.Module, ...]:
-        return tuple(
-            self._module_dict[module_name]
-            for module_name in self.active_module_name_set
-        )
+        active_module_list = []
+        for module_name in self.active_module_name_set:
+            for module in self._module_dict[module_name]:
+                active_module_list.append(module)
+        return tuple(active_module_list)
 
     @functools.cached_property
     def name(self) -> str:
@@ -49,8 +92,10 @@ class Cue(object):
         return self._is_playing
 
     @property
-    def module_name_to_initialise_kwargs_dict(self) -> ModuleNameToInitialiseKwargsDict:
-        return self._module_name_to_initialise_kwargs_dict
+    def module_name_to_replication_configuration(
+        self,
+    ) -> ModuleNameToInitialiseKwargsDict:
+        return self._module_name_to_replication_configuration
 
     def play(self):
         for module in self.active_module_tuple:
@@ -63,31 +108,19 @@ class Cue(object):
         self._is_playing = False
 
     def activate(self):
-        for module_name, module in self._module_dict.items():
+        for module_name, module_tuple in self._module_dict.items():
             try:
-                initialise_kwargs = self.module_name_to_initialise_kwargs_dict[
-                    module_name
-                ]
+                replication_configuration = (
+                    self.module_name_to_replication_configuration[module_name]
+                )
             except KeyError:
-                if module.auto_stop:
-                    module.stop()
-            else:
-                try:
-                    module.initialise(**initialise_kwargs)
-                except TypeError:
-                    if initialise_kwargs is False:
+                for module in module_tuple:
+                    if module.auto_stop:
                         module.stop()
+            else:
+                self._initialise_module_tuple(module_tuple, replication_configuration)
 
-        if self._duration is None:
-            duration_list = [
-                self._module_dict[module_name].duration
-                for module_name in self.active_module_name_set
-            ]
-            try:
-                duration = max(duration_list)
-            except ValueError:
-                duration = 0
-            self._duration = duration
+            self._set_duration()
 
     def jump_to(self, time_in_seconds: float):
         for module in self.active_module_tuple:

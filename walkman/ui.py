@@ -155,7 +155,7 @@ class JumpToTimeButton(Button):
         seconds = value_dict[self.jump_to_time_input_seconds_key]
         time = (int(minutes) * 60) + float(seconds)
         if time <= (cue_duration := self.backend.cue_manager.current_cue.duration):
-            for module in self.backend.module_dict.values():
+            for module in self.backend.module_dict.module_tuple:
                 module.jump_to(time)
             self.stop_watch.set_to(time)
             if not self.backend.audio_host.is_playing:

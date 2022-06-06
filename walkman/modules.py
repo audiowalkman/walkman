@@ -224,7 +224,7 @@ class ModuleWithDecibel(Module):
 ModuleName = str
 
 
-class ModuleDict(typing.Dict[ModuleName, Module]):
+class ModuleDict(typing.Dict[ModuleName, typing.Tuple[Module, ...]]):
     @staticmethod
     def get_module_name_to_module_class_dict():
         namespace_package = __import__(walkman.constants.MODULE_PACKAGE_NAME)
@@ -249,8 +249,8 @@ class ModuleDict(typing.Dict[ModuleName, Module]):
         audio_host: walkman.AudioHost,
         input_provider: walkman.InputProvider,
         output_provider: walkman.OutputProvider,
-        module_name_to_module_configuration_dict: typing.Dict[
-            str, typing.Dict[str, typing.Any]
+        module_name_to_replication_configuration_dict: typing.Dict[
+            str, typing.Dict[int, typing.Dict[str, typing.Any]]
         ],
     ) -> ModuleDict:
         module_name_to_module_class_dict = cls.get_module_name_to_module_class_dict()
@@ -258,17 +258,41 @@ class ModuleDict(typing.Dict[ModuleName, Module]):
         module_name_to_module_dict = {}
         for module_name, module_class in module_name_to_module_class_dict.items():
             try:
-                module_configuration = module_name_to_module_configuration_dict[
-                    module_name
-                ]
+                replication_index_to_module_configuration_dict = (
+                    module_name_to_replication_configuration_dict[module_name]
+                )
             except KeyError:
-                module_configuration = {}
-            module = module_class(
-                audio_host, input_provider, output_provider, **module_configuration
+                replication_index_to_module_configuration_dict = {0: {}}
+            module_list = [
+                None
+                for _ in range(
+                    max(replication_index_to_module_configuration_dict.keys()) + 1
+                )
+            ]
+            for (
+                replication_index,
+                module_configuration,
+            ) in replication_index_to_module_configuration_dict.items():
+                module = module_class(
+                    audio_host, input_provider, output_provider, **module_configuration
+                )
+                module_list[replication_index] = module
+            module_tuple = tuple(
+                module
+                if module is not None
+                else module_class(audio_host, input_provider, output_provider)
+                for module in module_list
             )
-            module_name_to_module_dict.update({module_name: module})
+            module_name_to_module_dict.update({module_name: module_tuple})
         return cls(module_name_to_module_dict)
 
     def close(self):
-        for module in self.values():
+        for module in self.module_tuple:
             module.close()
+
+    @functools.cached_property
+    def module_tuple(self) -> typing.Tuple[walkman.Module, ...]:
+        module_list = []
+        for module_tuple in self.values():
+            module_list.extend(module_tuple)
+        return tuple(module_list)

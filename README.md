@@ -12,7 +12,7 @@ It can be configured by [toml](https://toml.io/en/) files.
 ## Rationale
 
 Live-electronic setups tend to be messy, difficult to maintain and difficult to test.
-Furthermore many compositions with live-electronics make use of cue-based pattern, but in most of electronic music frameworks (Pd, Max/MSP, Pyo, ...) no default implementation exists.
+Furthermore many compositions with live-electronics make use of cue-based pattern, but in most of electronic music frameworks (Pd, Max/MSP, ...) no default implementation exists.
 `walkman` aims to improve the situation by providing a simple, deterministic configuration language to setup programs based on cues.
 The actual software is implemented in Python3, can be extended in python3 and can be tested with unit tests.
 
@@ -60,20 +60,24 @@ midi_control_list = [
 2 = 4
 3 = [5, 6]
 
+
 [configure.module.sound_file_player]
+replication_count = 1
+
+[configure.module.sound_file_player.0]
 # We can set values passed to '__init__'
 auto_stop = false
 
 # And we can also override the default values of
 # 'initialize' method.
-[configure.module.sound_file_player.default_dict.decibel]
+[configure.module.sound_file_player.0.default_dict.decibel]
 value = -6
 midi_control_index = 0
 midi_range = [-120, 0]
 
 # ##    Cues                  ## #
 
-[cue.1.sound_file_player]
+[cue.1.sound_file_player.0]
 path = "jungle_rain.wav"
 decibel = -12
 loop = true
@@ -81,7 +85,7 @@ loop = true
 [cue.2]
 sound_file = false
 
-[cue.2.harmonizer]
+[cue.2.harmonizer.0]
 # Move in 10 seconds from decibel -20 to decibel 0
 decibel = [[0, -20], [10, 0]]
 factor = 4

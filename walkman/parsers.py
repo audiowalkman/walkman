@@ -10,6 +10,7 @@ CONFIGURE_AUDIO_KEY = "audio"
 CONFIGURE_INPUT_KEY = "input"
 CONFIGURE_OUTPUT_KEY = "output"
 CONFIGURE_MODULE_KEY = "module"
+CONFIGURE_MODULE_REPLICATION_COUNT_KEY = "replication_count"
 
 CUE_KEY = "cue"
 
@@ -38,14 +39,53 @@ def warn_not_used_configuration_content(toml_block: dict, block_name: str):
         )
 
 
+def add_replication_instance(
+    replication_index: int,
+    module_name: str,
+    replication_configuration: dict,
+    configuration: dict,
+):
+    try:
+        replication_index = int(replication_index)
+    except ValueError:
+        warnings.warn(
+            f"Found invalid replication index '{replication_index}'"
+            f" in module '{module_name}'. Only integers are allowed!"
+        )
+    else:
+        replication_configuration.update({replication_index: configuration})
+
+
 def configure_module_block_and_audio_object_to_module_dict(
     configure_module_block: dict,
     audio_host: walkman.AudioHost,
     input_provider: walkman.InputProvider,
     output_provider: walkman.OutputProvider,
 ) -> walkman.ModuleDict:
+    module_name_to_replication_configuration_dict = {}
+    for module_name, replication_configuration_block in configure_module_block.items():
+        replication_count = pop_from_dict(
+            replication_configuration_block,
+            CONFIGURE_MODULE_REPLICATION_COUNT_KEY,
+            None,
+        )
+        replication_configuration = {}
+        for replication_index, configuration in replication_configuration_block.items():
+            add_replication_instance(
+                replication_index, module_name, replication_configuration, configuration
+            )
+        if replication_count is not None:
+            for replication_index in range(int(replication_count)):
+                if replication_index not in replication_configuration:
+                    replication_configuration.update({replication_index: {}})
+        module_name_to_replication_configuration_dict.update(
+            {module_name: replication_configuration}
+        )
     return walkman.ModuleDict.from_audio_objects_and_module_configuration(
-        audio_host, input_provider, output_provider, configure_module_block
+        audio_host,
+        input_provider,
+        output_provider,
+        module_name_to_replication_configuration_dict,
     )
 
 
@@ -81,7 +121,26 @@ def cue_block_and_module_dict_to_cue_manager(
 ) -> walkman.CueManager:
     cue_list = []
     for cue_name, cue_kwargs in cue_block.items():
-        cue = walkman.Cue(module_dict, cue_name, **cue_kwargs)
+        module_name_to_replication_configuration = {}
+        for module_name, replication_configuration_block in cue_kwargs.items():
+            replication_configuration = {}
+            for (
+                replication_index,
+                module_kwargs,
+            ) in replication_configuration_block.items():
+                add_replication_instance(
+                    replication_index,
+                    module_name,
+                    replication_configuration,
+                    module_kwargs,
+                )
+            module_name_to_replication_configuration.update(
+                {module_name: replication_configuration}
+            )
+
+        cue = walkman.Cue(
+            module_dict, cue_name, **module_name_to_replication_configuration
+        )
         cue_list.append(cue)
 
     cue_manager = walkman.CueManager(tuple(cue_list))
