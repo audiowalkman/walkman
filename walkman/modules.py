@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import abc
+import copy
 import dataclasses
+import functools
 import importlib
 import inspect
 import pkgutil
@@ -22,11 +24,14 @@ class Module(walkman.AudioObject):
     input_provider: walkman.InputProvider
     output_provider: walkman.OutputProvider
     auto_stop: bool = True
-    fade_in_duration: float = 0.001
-    fade_out_duration: float = 0.01
+    fade_in_duration: float = 0.1
+    fade_out_duration: float = 0.2
     default_dict: typing.Dict[str, typing.Any] = dataclasses.field(
         default_factory=lambda: {}
     )
+    parameter_name_to_parameter_dict: typing.Dict[
+        str, walkman.Parameter
+    ] = dataclasses.field(default_factory=lambda: {})
 
     def __post_init__(self):
         self._is_playing = False
@@ -37,36 +42,47 @@ class Module(walkman.AudioObject):
     def __str__(self) -> str:
         return f"{type(self).__name__}({self.get_name()})"
 
-    def _fetch_keyword_argument_dict(self, **kwargs) -> typing.Dict[str, typing.Any]:
-        def value_or_parameter_kwargs_to_parameter_kwargs(
-            value_or_parameter_kwargs: typing.Union[dict, float]
-        ) -> dict:
-            if isinstance(value_or_parameter_kwargs, dict):
-                parameter_kwargs = value_or_parameter_kwargs
-            else:
-                parameter_kwargs = {"value": value_or_parameter_kwargs}
-            return parameter_kwargs
+    @staticmethod
+    def value_or_parameter_kwargs_to_parameter_kwargs(
+        value_or_parameter_kwargs: typing.Union[dict, float]
+    ) -> dict:
+        if isinstance(value_or_parameter_kwargs, dict):
+            parameter_kwargs = value_or_parameter_kwargs
+        else:
+            parameter_kwargs = {"value": value_or_parameter_kwargs}
+        return parameter_kwargs
 
+    @functools.cached_property
+    def default_parameter_name_to_parameter_kwargs_dict(
+        self,
+    ) -> typing.Dict[str, typing.Dict[str, typing.Any]]:
         parameter_name_to_parameter_kwargs_dict = {}
         parameter_mapping_proxy = inspect.signature(self._initalise).parameters
         for parameter_name, inspect_parameter in parameter_mapping_proxy.items():
             if inspect_parameter.annotation == "walkman.Parameter":
                 parameter_name_to_parameter_kwargs_dict.update(
                     {
-                        parameter_name: value_or_parameter_kwargs_to_parameter_kwargs(
+                        parameter_name: self.value_or_parameter_kwargs_to_parameter_kwargs(
                             inspect_parameter.default
                         )
                     }
                 )
 
+        return parameter_name_to_parameter_kwargs_dict
+
+    def _fetch_keyword_argument_dict(self, **kwargs) -> typing.Dict[str, typing.Any]:
         keyword_argument_dict = {}
         keyword_argument_dict.update(self.default_dict)
+
+        parameter_name_to_parameter_kwargs_dict = copy.deepcopy(
+            self.default_parameter_name_to_parameter_kwargs_dict
+        )
 
         for argument, value in kwargs.items():
             if argument in parameter_name_to_parameter_kwargs_dict:
                 parameter_name_to_parameter_kwargs_dict[
                     argument
-                ] = value_or_parameter_kwargs_to_parameter_kwargs(value)
+                ] = self.value_or_parameter_kwargs_to_parameter_kwargs(value)
             else:
                 keyword_argument_dict.update({argument: value})
 
@@ -74,8 +90,14 @@ class Module(walkman.AudioObject):
             parameter_name,
             parameter_kwargs,
         ) in parameter_name_to_parameter_kwargs_dict.items():
-            parameter = walkman.Parameter(self.input_provider, **parameter_kwargs)
-            # parameter = parameter_kwargs['value']
+            try:
+                parameter = self.parameter_name_to_parameter_dict[parameter_name]
+            except KeyError:
+                parameter = walkman.Parameter(self.input_provider)
+                self.parameter_name_to_parameter_dict.update(
+                    {parameter_name: parameter}
+                )
+            parameter.initialise(**parameter_kwargs)
             keyword_argument_dict.update({parameter_name: parameter})
 
         return keyword_argument_dict
