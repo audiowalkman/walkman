@@ -167,6 +167,9 @@ class SoundFilePlayer(walkman.ModuleWithDecibel):
         )
         self._sound_file_player.stop()
 
+        self._sound_file = SoundFile(temporary_file_path)
+        self.path_to_sound_file_dict.update({temporary_file_path: self._sound_file})
+
     def _jump_to(self, time_in_seconds: float):
         self._sound_file_player.setOffset(time_in_seconds)
 
@@ -200,7 +203,9 @@ class SoundFilePlayer(walkman.ModuleWithDecibel):
                 warnings.warn(
                     f"Can't load sound_file with path = {path}. "
                     "Global channel_count for SoundFilePlayer "
-                    f"module is {abs(difference)} too small.",
+                    f"module is {abs(difference)} channel(s) too small ("
+                    f"Global channel count: {self.channel_count}; SoundFile "
+                    f"channel count: {channel_count}).",
                     TooSmallChannelCountWarning,
                 )
                 return
