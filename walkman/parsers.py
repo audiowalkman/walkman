@@ -63,6 +63,7 @@ def configure_block_to_global_state_object_tuple(
     input_block = pop_from_dict(configure_block, CONFIGURE_INPUT_KEY, {})
     output_block = pop_from_dict(configure_block, CONFIGURE_OUTPUT_KEY, {})
     module_block = pop_from_dict(configure_block, CONFIGURE_MODULE_KEY, {})
+
     warn_not_used_configuration_content(configure_block, "configure")
 
     audio_host = walkman.AudioHost(**audio_block)
@@ -94,7 +95,7 @@ def toml_str_to_backend(
 
     configure_block = pop_from_dict(toml_dictionary, CONFIGURE_KEY, {})
     cue_block = pop_from_dict(toml_dictionary, CUE_KEY, {})
-    warn_not_used_configuration_content(toml_str, "global")
+    warn_not_used_configuration_content(toml_dictionary, "global")
 
     global_state_object_tuple = configure_block_to_global_state_object_tuple(
         configure_block
