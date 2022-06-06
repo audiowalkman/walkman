@@ -5,11 +5,16 @@
 [![PyPI version](https://badge.fury.io/py/audiowalkman.svg)](https://badge.fury.io/py/audiowalkman)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-
-Walkman is a minimalistic, robust software to play audio files in performance contexts.
+Walkman is a minimalistic, robust software to trigger (audio) cues in performance contexts.
 It uses [pyo](http://ajaxsoundstudio.com/software/pyo/) as its backend and [pysimplegui](https://pypi.org/project/PySimpleGUI/) as its frontend.
-It can be configured by using [toml](https://toml.io/en/) files.
+It can be configured by [toml](https://toml.io/en/) files.
 
+## Rationale
+
+Live-electronic setups tend to be messy, difficult to maintain and difficult to test.
+Furthermore many compositions with live-electronics make use of cue-based pattern, but in most of electronic music frameworks (Pd, Max/MSP, Pyo, ...) no default implementation exists.
+`walkman` aims to improve the situation by providing a simple, deterministic configuration language to setup programs based on cues.
+The actual software is implemented in Python3, can be extended in python3 and can be tested with unit tests.
 
 ## Installation
 
@@ -20,43 +25,70 @@ pip3 install audiowalkman
 ```
 
 You can also use [buildout](https://buildout.readthedocs.io/) for creating an isolated stable environment.
-Please consult the [respective README](https://github.com/levinericzimmermann/walkman/blob/main/buildout/README.md).
+Please consult the [respective README](https://github.com/levinericzimmermann/walkman/blob/main/buildout/README.md) for more information.
 
 ## Configuration file
 
 ```toml
-# nature_and_guitar_piece.toml
+# my_composition.toml
 
-# Global name
-name = nature-and-guitar
+# ##    General configurations  ## #
 
-# Used soundfiles
-[soundfile.forest]
-path = "files/forest.wav"
+[configure]
+name = "my composition"
 
-[soundfile.ocean]
-path = "files/ocean.wav"
-loop = True
+[configure.audio]
+sampling_rate = 44100
 
-[soundfile.guitar-quartet]
-path = "files/guitar_quartet.wav"
+[configure.input]
+midi_control_list = [
+    # [midi control, midi channel]
+    [0, 1],
+    [1, 1]
+]
 
-# Specifiy audio settings
-[audio]
-audio = "jack"
-sampling_rate = 48000
-player = disk  # alternatively: ram
+[configure.input.channel_mapping]
+# physical input -> input index
+1 = 0
+2 = 1
+3 = [0, 1]
 
-[audio.channel_mapping]
-# input -> output
+[configure.output.channel_mapping]
+# output index -> physical output
 0 = 1
 1 = 2
-2 = 3
-3 = 4
+2 = 4
+3 = [5, 6]
+
+[configure.module.sound_file_player]
+# We can set values passed to '__init__'
+auto_stop = false
+
+# And we can also override the default values of
+# 'initialize' method.
+[configure.module.sound_file_player.default_dict.decibel]
+value = -6
+midi_control_index = 0
+midi_range = [-120, 0]
+
+# ##    Cues                  ## #
+
+[cue.1.sound_file_player]
+path = "jungle_rain.wav"
+decibel = -12
+loop = true
+
+[cue.2]
+sound_file = false
+
+[cue.2.harmonizer]
+# Move in 10 seconds from decibel -20 to decibel 0
+decibel = [[0, -20], [10, 0]]
+factor = 4
 ```
 
 ## Usage
 
 ```bash
-walkman nature_and_guitar_piece.toml
+walkman my_composition.toml
 ```

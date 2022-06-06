@@ -16,7 +16,7 @@ import walkman
 
 @dataclasses.dataclass(frozen=True)
 class UIElement(abc.ABC):
-    audio_host: walkman.audio.AudioHost
+    backend: walkman.Backend
     key_tuple: typing.Optional[str] = None
     keyboard_key_tuple: typing.Optional[str] = None
 
@@ -57,13 +57,11 @@ class StopWatch(UIElement):
 
     @property
     def duration(self) -> float:
-        return self.audio_host.sound_file_player.sound_file.duration_in_seconds
+        return self.backend.cue_manager.current_cue.duration
 
     @property
     def formatted_duration(self) -> str:
-        return StopWatch.format_time(
-            self.duration
-        )
+        return StopWatch.format_time(self.duration)
 
     @property
     def current_time(self) -> float:
@@ -128,7 +126,7 @@ class Button(UIElement):
 class TooLargeTimeWarning(Warning):
     def __init__(self, time: float):
         super().__init__(
-            f"Can't jump to given time: {time} seconds longer than soundfile"
+            f"Can't jump to given time: {time} seconds longer than cue duration."
         )
 
 
@@ -156,16 +154,15 @@ class JumpToTimeButton(Button):
         minutes = value_dict[self.jump_to_time_input_minutes_key]
         seconds = value_dict[self.jump_to_time_input_seconds_key]
         time = (int(minutes) * 60) + float(seconds)
-        if time <= (
-            sound_file_duration := self.audio_host.sound_file_player.sound_file.duration_in_seconds
-        ):
-            self.audio_host.sound_file_player.jump_to(time)
+        if time <= (cue_duration := self.backend.cue_manager.current_cue.duration):
+            for module in self.backend.module_dict.values():
+                module.jump_to(time)
             self.stop_watch.set_to(time)
-            if not self.audio_host.is_playing:
+            if not self.backend.audio_host.is_playing:
                 self.stop_watch.stop()
             self.stop_watch.update()
         else:
-            warnings.warn(TooLargeTimeWarning(time - sound_file_duration))
+            warnings.warn(TooLargeTimeWarning(time - cue_duration))
 
 
 class FrozenText(UIElement):
@@ -177,6 +174,17 @@ class FrozenText(UIElement):
     def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
         return sg.Text(**self.text_kwargs)
 
+    def handle_event(self, _: str, __: dict):
+        pass
+
+
+class Title(FrozenText):
+    def __init__(self, backend: walkman.Backend, *args, **kwargs):
+        text_kwargs = {"text": backend.name}
+        super().__init__(backend, *args, text_kwargs=text_kwargs, **kwargs)
+
+
+class Logging(UIElement):
     def handle_event(self, _: str, __: dict):
         pass
 
@@ -218,13 +226,13 @@ class StartStopButton(Button):
 
     def handle_event(self, _: str, __: dict):
         if self.is_playing:
-            self.audio_host.stop()
+            # self.backend.audio_host.stop()
+            self.backend.cue_manager.current_cue.stop()
             self.stop_watch.stop()
         else:
-            self.audio_host.start()
+            self.backend.cue_manager.current_cue.play()
             self.stop_watch.start()
-            if not self.audio_host.sound_file_player.is_playing:
-                self.audio_host.sound_file_player.play()
+            # self.backend.cue_manager.current_cue.play()
         self.is_playing = not self.is_playing
 
     def tick(self):
@@ -232,10 +240,10 @@ class StartStopButton(Button):
             self.stop_watch.tick()
 
 
-class SelectSoundFileMenu(UIElement):
+class SelectCueMenu(UIElement):
     def __init__(self, stop_watch: StopWatch, *args, **kwargs):
         self.stop_watch = stop_watch
-        self.combo_key = "select_sound_file"
+        self.combo_key = "select_cue"
 
         self.left_key = "Left:113"
         self.right_key = "Right:114"
@@ -247,11 +255,7 @@ class SelectSoundFileMenu(UIElement):
             **kwargs,
         )
 
-        self.name_to_sound_file_dict = {
-            sound_file.name: sound_file
-            for sound_file in self.audio_host.sound_file_tuple
-        }
-        self.value_tuple = tuple(self.name_to_sound_file_dict.keys())
+        self.value_tuple = self.backend.cue_manager.cue_name_tuple
         self.value_count = len(self.value_tuple)
 
     @functools.cached_property
@@ -265,21 +269,23 @@ class SelectSoundFileMenu(UIElement):
         )
 
     def handle_event(self, event: str, value_dict: dict):
-        sound_file_name = value_dict[self.combo_key]
-        if event != self.combo_key:
-            sound_file_index = self.value_tuple.index(sound_file_name)
+        cue_name = value_dict[self.combo_key]
+        if event == self.combo_key:
+            new_cue_index = self.backend.cue_manager.cue_name_tuple.index(cue_name)
+        else:
+            cue_index = self.value_tuple.index(cue_name)
             # When current duration != 0 and one left key: jump to beginning
-            # of current soundfile.
+            # of current cue.
             if event == self.left_key and int(self.stop_watch.display_time) != 0:
-                new_sound_file_index = sound_file_index
+                new_cue_index = cue_index
             else:
-                new_sound_file_index = (
-                    sound_file_index + {self.left_key: -1, self.right_key: 1}[event]
+                new_cue_index = (
+                    cue_index + {self.left_key: -1, self.right_key: 1}[event]
                 ) % self.value_count
-            sound_file_name = self.value_tuple[new_sound_file_index]
-            self.gui_element.update(value=sound_file_name)
-        sound_file = self.name_to_sound_file_dict[sound_file_name]
-        self.audio_host.sound_file_player.sound_file = sound_file
+            cue_name = self.value_tuple[new_cue_index]
+            self.gui_element.update(value=cue_name)
+
+        self.backend.cue_manager.jump_to_cue(new_cue_index)
         self.stop_watch.reset()
         self.stop_watch.stop()
 
@@ -292,10 +298,10 @@ class DuplicateEventError(Exception):
 class NestedUIElement(UIElement):
     def __init__(
         self,
-        audio_host,
+        backend,
         ui_element_sequence: typing.Sequence[UIElement],
     ):
-        super().__init__(audio_host=audio_host)
+        super().__init__(backend=backend)
         self.ui_element_tuple = tuple(ui_element_sequence)
 
         event_to_ui_element_dict = {}
@@ -339,44 +345,44 @@ class JumpToTimeControl(NestedUIElement):
     def __init__(
         self,
         stop_watch: StopWatch,
-        audio_host,
+        backend,
     ):
-        self.jump_to_time_input_minutes = JumpToTimeInputMinutes(audio_host)
-        self.jump_to_time_input_seconds = JumpToTimeInputSeconds(audio_host)
+        self.jump_to_time_input_minutes = JumpToTimeInputMinutes(backend)
+        self.jump_to_time_input_seconds = JumpToTimeInputSeconds(backend)
         self.jump_to_time_button = JumpToTimeButton(
             stop_watch,
             self.jump_to_time_input_minutes.key,
             self.jump_to_time_input_seconds.key,
-            audio_host,
+            backend,
         )
 
         ui_element_sequence = (
             self.jump_to_time_button,
             self.jump_to_time_input_minutes,
-            FrozenText(audio_host, text_kwargs={"text": "MIN"}),
+            FrozenText(backend, text_kwargs={"text": "MIN"}),
             self.jump_to_time_input_seconds,
-            FrozenText(audio_host, text_kwargs={"text": "SEC"}),
+            FrozenText(backend, text_kwargs={"text": "SEC"}),
         )
 
-        super().__init__(audio_host, ui_element_sequence)
+        super().__init__(backend, ui_element_sequence)
 
 
 class Transport(NestedUIElement):
     def __init__(
         self,
-        audio_host,
+        backend,
     ):
-        self.stop_watch = StopWatch(audio_host)
-        self.start_stop_button = StartStopButton(self.stop_watch, audio_host)
-        self.select_sound_file_menu = SelectSoundFileMenu(self.stop_watch, audio_host)
+        self.stop_watch = StopWatch(backend)
+        self.start_stop_button = StartStopButton(self.stop_watch, backend)
+        self.select_cue_menu = SelectCueMenu(self.stop_watch, backend)
 
         ui_element_sequence = (
             self.start_stop_button,
-            self.select_sound_file_menu,
+            self.select_cue_menu,
             self.stop_watch,
         )
 
-        super().__init__(audio_host, ui_element_sequence)
+        super().__init__(backend, ui_element_sequence)
 
     def tick(self):
         for ui_element in self.ui_element_tuple:
@@ -385,14 +391,14 @@ class Transport(NestedUIElement):
                 ui_element.tick()
 
 
-class SoundFileControl(NestedUIElement):
+class CueControl(NestedUIElement):
     def __init__(
         self,
-        audio_host,
+        backend,
     ):
-        self.transport = Transport(audio_host)
+        self.transport = Transport(backend)
         self.jump_to_time_control = JumpToTimeControl(
-            self.transport.stop_watch, audio_host
+            self.transport.stop_watch, backend
         )
 
         ui_element_sequence = (
@@ -400,17 +406,40 @@ class SoundFileControl(NestedUIElement):
             self.jump_to_time_control,
         )
 
-        super().__init__(audio_host, ui_element_sequence)
+        super().__init__(backend, ui_element_sequence)
+
+
+class Walkman(NestedUIElement):
+    def __init__(
+        self,
+        backend,
+    ):
+        self.title = Title(backend)
+        self.cue_control = CueControl(backend)
+
+        ui_element_sequence = (
+            self.cue_control,
+            self.title,
+        )
+
+        super().__init__(backend, ui_element_sequence)
+
+    @functools.cached_property
+    def gui_element(self) -> list:
+        return [
+            [self.title.gui_element],
+            self.cue_control.gui_element,
+        ]
 
 
 class GUI(NestedUIElement):
     def __init__(
         self,
-        audio_host: walkman.audio.AudioHost,
+        backend: walkman.Backend,
         ui_element_sequence: typing.Sequence[UIElement],
         theme: str = "DarkBlack",
     ):
-        super().__init__(audio_host, ui_element_sequence)
+        super().__init__(backend, ui_element_sequence)
         sg.theme(theme)
 
     @property
@@ -432,6 +461,8 @@ class GUI(NestedUIElement):
             scaling=3,
         )
 
+        self.backend.audio_host.start()
+
         while True:
             event, value_dict = window.read(timeout=0.85)
 
@@ -445,20 +476,31 @@ class GUI(NestedUIElement):
                     f"Catched event       = '{event}' \n"
                     f"with value_dict     = '{value_dict}'\n."
                 )
-                self.handle_event(event, value_dict)
+                try:
+                    self.handle_event(event, value_dict)
+                except Exception:
+                    walkman.constants.LOGGER.exception(
+                        f"Catched exception when handling event '{event}'"
+                        f"with value_dict = '{value_dict}': "
+                    )
 
-            self.tick()
+            try:
+                self.tick()
+            except Exception:
+                walkman.constants.LOGGER.exception(
+                    "Catched exception when running tick method: "
+                )
 
-        self.audio_host.close()
+        self.backend.cue_manager.current_cue.stop()
+        self.backend.module_dict.close()
+        self.backend.audio_host.close()
         window.close()
 
 
-UI_CLASS_TUPLE = (SoundFileControl,)
+UI_CLASS_TUPLE = (Walkman,)
 """All used UI classes"""
 
 
-def audio_host_to_gui(audio_host: walkman.audio.AudioHost) -> GUI:
-    gui = GUI(
-        audio_host, [ui_class(audio_host=audio_host) for ui_class in UI_CLASS_TUPLE]
-    )
+def backend_to_gui(backend: walkman.Backend) -> GUI:
+    gui = GUI(backend, [ui_class(backend=backend) for ui_class in UI_CLASS_TUPLE])
     return gui
