@@ -1,5 +1,6 @@
 import tomli
 import typing
+import warnings
 
 import walkman
 
@@ -11,6 +12,30 @@ CONFIGURE_OUTPUT_KEY = "output"
 CONFIGURE_MODULE_KEY = "module"
 
 CUE_KEY = "cue"
+
+
+def pop_from_dict(dict_to_pop_from: dict, name: str, fallback_value: typing.Any = None):
+    try:
+        value = dict_to_pop_from[name]
+    except KeyError:
+        value = fallback_value
+    else:
+        del dict_to_pop_from[name]
+    return value
+
+
+class UnusedSpecificationWarning(Warning):
+    pass
+
+
+def warn_not_used_configuration_content(toml_block: dict, block_name: str):
+    if toml_block:
+        formatted_toml_block = "\t>>> ".join(str(toml_block).splitlines(True))
+        warnings.warn(
+            "WALKMAN ignored the following invalid specifications "
+            f"in '{block_name.upper()}':\n{formatted_toml_block}",
+            UnusedSpecificationWarning,
+        )
 
 
 def configure_module_block_and_audio_object_to_module_dict(
@@ -33,11 +58,12 @@ def configure_block_to_global_state_object_tuple(
     walkman.OutputProvider,
     walkman.ModuleDict,
 ]:
-    name = configure_block.get(CONFIGURE_NAME_KEY, "Project")
-    audio_block = configure_block.get(CONFIGURE_AUDIO_KEY, {})
-    input_block = configure_block.get(CONFIGURE_INPUT_KEY, {})
-    output_block = configure_block.get(CONFIGURE_OUTPUT_KEY, {})
-    module_block = configure_block.get(CONFIGURE_MODULE_KEY, {})
+    name = pop_from_dict(configure_block, CONFIGURE_NAME_KEY, "Project")
+    audio_block = pop_from_dict(configure_block, CONFIGURE_AUDIO_KEY, {})
+    input_block = pop_from_dict(configure_block, CONFIGURE_INPUT_KEY, {})
+    output_block = pop_from_dict(configure_block, CONFIGURE_OUTPUT_KEY, {})
+    module_block = pop_from_dict(configure_block, CONFIGURE_MODULE_KEY, {})
+    warn_not_used_configuration_content(configure_block, "configure")
 
     audio_host = walkman.AudioHost(**audio_block)
     input_provider = walkman.InputProvider.from_data(**input_block)
@@ -66,8 +92,9 @@ def toml_str_to_backend(
 ) -> walkman.Backend:
     toml_dictionary = tomli.loads(toml_str)
 
-    configure_block = toml_dictionary.get(CONFIGURE_KEY, {})
-    cue_block = toml_dictionary.get(CUE_KEY, {})
+    configure_block = pop_from_dict(toml_dictionary, CONFIGURE_KEY, {})
+    cue_block = pop_from_dict(toml_dictionary, CUE_KEY, {})
+    warn_not_used_configuration_content(toml_str, "global")
 
     global_state_object_tuple = configure_block_to_global_state_object_tuple(
         configure_block
