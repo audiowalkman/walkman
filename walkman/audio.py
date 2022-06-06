@@ -32,13 +32,17 @@ class AudioHost(object):
     def __init__(
         self,
         audio: str = "jack",
+        midi: str = "jack",
         sampling_rate: int = 44100,
         buffer_size: int = 256,
-        output_channel_mapping: walkman.ChannelMapping = walkman.ChannelMapping({0: 0, 1: 1}),
+        output_channel_mapping: walkman.ChannelMapping = walkman.ChannelMapping(
+            {0: 0, 1: 1}
+        ),
     ):
         self._is_playing = False
         self.server = pyo.Server(
             sr=sampling_rate,
+            midi=midi,
             nchnls=output_channel_mapping.maxima_right_channel,
             buffersize=buffer_size,
             duplex=1,
