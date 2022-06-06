@@ -57,7 +57,7 @@ class Module(walkman.AudioObject):
         self,
     ) -> typing.Dict[str, typing.Dict[str, typing.Any]]:
         parameter_name_to_parameter_kwargs_dict = {}
-        parameter_mapping_proxy = inspect.signature(self._initalise).parameters
+        parameter_mapping_proxy = inspect.signature(self._initialise).parameters
         for parameter_name, inspect_parameter in parameter_mapping_proxy.items():
             if inspect_parameter.annotation == "walkman.Parameter":
                 parameter_name_to_parameter_kwargs_dict.update(
@@ -115,7 +115,7 @@ class Module(walkman.AudioObject):
         ...
 
     @abc.abstractmethod
-    def _initalise(self, decibel: walkman.Parameter = -6, **kwargs):  # type: ignore
+    def _initialise(self, **kwargs):  # type: ignore
         ...
 
     @abc.abstractmethod
@@ -164,7 +164,7 @@ class Module(walkman.AudioObject):
         keyword_argument_dict = self._fetch_keyword_argument_dict(**kwargs)
 
         # Parse everything to actual initialise method
-        self._initalise(**keyword_argument_dict)
+        self._initialise(**keyword_argument_dict)
 
     def play(self, duration: float = 0, delay: float = 0) -> Module:
         if not self.is_playing:
@@ -190,6 +190,26 @@ class Module(walkman.AudioObject):
         """
 
         pass
+
+
+class ModuleWithDecibel(Module):
+    def setup_pyo_object(self):
+        # Default audio objects, used to control default parameter
+        # 'decibel'
+        self._amplitude = pyo.Sig(0)
+        self._decibel_to_amplitude = pyo.DBToA(self._amplitude)
+        self._decibel_signal_to = pyo.SigTo(self._decibel_to_amplitude)
+
+    def _initialise(self, decibel: walkman.Parameter = -6, **kwargs):  # type: ignore
+        self._amplitude.setValue(decibel.value)
+
+    def _play(self, duration: float = 0, delay: float = 0):
+        self._decibel_to_amplitude.play(delay=delay)
+        self._decibel_signal_to.play(delay=delay)
+
+    def _stop(self, wait: float = 0):
+        self._decibel_to_amplitude.stop(wait=wait)
+        self._decibel_signal_to.stop(wait=wait)
 
 
 ModuleName = str

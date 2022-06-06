@@ -9,7 +9,7 @@ from .io import (
 )
 from .audio import AudioObject, AudioHost
 from .parameters import Parameter
-from .modules import Module, ModuleDict
+from .modules import Module, ModuleWithDecibel, ModuleDict
 from .cues import Cue, CueManager
 from .backends import Backend
 from . import parsers

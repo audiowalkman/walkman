@@ -140,7 +140,7 @@ class TooSmallChannelCountWarning(Warning):
 
 
 @dataclasses.dataclass
-class SoundFilePlayer(walkman.Module):
+class SoundFilePlayer(walkman.ModuleWithDecibel):
     """Play sound file."""
 
     channel_count: int = 1
@@ -152,6 +152,8 @@ class SoundFilePlayer(walkman.Module):
     _start_time: float = 0
 
     def setup_pyo_object(self):
+        super().setup_pyo_object()
+
         temporary_file = tempfile.NamedTemporaryFile()
         temporary_file_path = temporary_file.name
         self._temporary_file = temporary_file
@@ -160,32 +162,30 @@ class SoundFilePlayer(walkman.Module):
         sound_file_content = np.array([base_list, base_list], dtype="int16")
         soundfile.write(temporary_file_path, sound_file_content, 44100, format="wav")
 
-        self._amplitude = pyo.Sig(0)
-        self._decibel_to_amplitude = pyo.DBToA(self._amplitude)
-        self._signal_to = pyo.SigTo(self._decibel_to_amplitude)
-        self._sound_file_player = pyo.SfPlayer(temporary_file_path, mul=self._signal_to, interp=1)
+        self._sound_file_player = pyo.SfPlayer(
+            temporary_file_path, mul=self._decibel_signal_to, interp=1
+        )
         self._sound_file_player.stop()
 
     def _jump_to(self, time_in_seconds: float):
         self._sound_file_player.setOffset(time_in_seconds)
 
     def _play(self, duration: float = 0, delay: float = 0):
+        super()._play(duration, delay)
         self._jump_to(self._current_time)
         self._start_time = time.time()
         self._sound_file_player.play(dur=duration, delay=delay)
-        self._decibel_to_amplitude.play()
-        self._signal_to.play()
 
     def _stop(self, wait: float = 0):
+        super()._stop(wait)
         self._current_time = min(
             ((time.time() - self._start_time) + self._current_time, self.duration)
         )
         self._sound_file_player.stop(wait=wait)
-        self._decibel_to_amplitude.stop(wait=wait)
-        self._signal_to.stop(wait=wait)
 
-    def _initalise(self, path: str, decibel: walkman.Parameter = -6, loop: bool = False):  # type: ignore
-        self._amplitude.setValue(decibel.value)
+    def _initialise(self, path: str, decibel: walkman.Parameter = -6, loop: bool = False):  # type: ignore
+        super()._initialise(decibel=decibel)
+
         self.loop = loop
 
         try:
