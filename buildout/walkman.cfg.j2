@@ -4,7 +4,14 @@ versions = versions
 
 [walkman]
 recipe = zc.recipe.egg
-eggs = audiowalkman
+eggs =
+    audiowalkman
+    {% for module in module_dict.keys() %}
+    {{ module }}
+    {% endfor %}
 
 [versions]
 audiowalkman = {{ audiowalkman_version }}
+{% for module, version in module_dict.items() %}
+{{ module }} = {{ version }}
+{% endfor %}
