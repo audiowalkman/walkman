@@ -13,7 +13,7 @@ It can be configured by [toml](https://toml.io/en/) files.
 
 Live-electronic setups tend to be messy, difficult to maintain and difficult to test.
 Furthermore many compositions with live-electronics make use of cue-based pattern, but in most of electronic music frameworks (Pd, Max/MSP, ...) no default implementation exists.
-`walkman` aims to improve the situation by providing a simple, deterministic configuration language to setup programs based on cues.
+`walkman` aims to improve the situation by providing a simple, declarative configuration language to setup programs based on cues.
 The actual software is implemented in Python3, can be extended in python3 and can be tested with unit tests.
 
 ## Installation
