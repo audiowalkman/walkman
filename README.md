@@ -24,7 +24,7 @@ walkman is available on pip:
 pip3 install audiowalkman
 ```
 
-You can also use [buildout](https://buildout.readthedocs.io/) for creating an isolated stable environment.
+You can also use [buildout](https://buildout.readthedocs.io/) to create an isolated environment.
 Please consult the [respective README](https://github.com/levinericzimmermann/walkman/blob/main/buildout/README.md) for more information.
 
 ## Configuration file

@@ -95,30 +95,30 @@ class InputProvider(object):
     def channel_mapping_to_audio_input_list(
         channel_mapping: ChannelMapping,
     ) -> AudioInputList:
-        if channel_mapping:
-            physical_channel_index_to_input_dict = {}
-            for physical_channel in channel_mapping.keys():
-                pyo_input = pyo.Input(chnls=physical_channel)
-                pyo_input.play()
-                physical_channel_index_to_input_dict.update(
-                    {physical_channel: pyo_input}
-                )
-
-            denormal_noise = pyo.Noise(1e-24)
-            denormal_noise.play()
-
-            audio_input_list = [
-                denormal_noise for _ in range(channel_mapping.maxima_left_channel)
-            ]
-
-            for physical_channel, audio_input_index_tuple in channel_mapping.items():
-                pyo_input = physical_channel_index_to_input_dict[physical_channel]
-                for audio_input_index in audio_input_index_tuple:
-                    audio_input_list[audio_input_index] += pyo_input
-
-            return audio_input_list
-        else:
+        if not channel_mapping:
             return []
+
+        physical_channel_index_to_input_dict = {}
+        for physical_channel in channel_mapping.keys():
+            pyo_input = pyo.Input(chnls=physical_channel)
+            pyo_input.play()
+            physical_channel_index_to_input_dict.update(
+                {physical_channel: pyo_input}
+            )
+
+        denormal_noise = pyo.Noise(1e-24)
+        denormal_noise.play()
+
+        audio_input_list = [
+            denormal_noise for _ in range(channel_mapping.maxima_left_channel)
+        ]
+
+        for physical_channel, audio_input_index_tuple in channel_mapping.items():
+            pyo_input = physical_channel_index_to_input_dict[physical_channel]
+            for audio_input_index in audio_input_index_tuple:
+                audio_input_list[audio_input_index] += pyo_input
+
+        return audio_input_list
 
     @staticmethod
     def midi_control_list_to_midi_input_list(
