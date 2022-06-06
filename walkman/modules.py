@@ -16,6 +16,15 @@ import pyo
 import walkman
 
 
+def override_default_kwargs(method_to_wrap: typing.Callable) -> typing.Callable:
+    def wrapper(self, **kwargs):
+        default_dict = copy.deepcopy(self.default_dict)
+        default_dict.update(kwargs)
+        return method_to_wrap(self, **default_dict)
+
+    return wrapper
+
+
 @dataclasses.dataclass
 class Module(walkman.AudioObject):
     """Interface for an isolated audio process."""
@@ -72,7 +81,6 @@ class Module(walkman.AudioObject):
 
     def _fetch_keyword_argument_dict(self, **kwargs) -> typing.Dict[str, typing.Any]:
         keyword_argument_dict = {}
-        keyword_argument_dict.update(self.default_dict)
 
         parameter_name_to_parameter_kwargs_dict = copy.deepcopy(
             self.default_parameter_name_to_parameter_kwargs_dict
@@ -142,6 +150,7 @@ class Module(walkman.AudioObject):
 
     # ################## PUBLIC METHODS ################## #
 
+    @override_default_kwargs
     def initialise(
         self,
         channel_mapping: typing.Optional[
