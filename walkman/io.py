@@ -100,7 +100,7 @@ class InputProvider(object):
 
         physical_channel_index_to_input_dict = {}
         for physical_channel in channel_mapping.keys():
-            pyo_input = pyo.Input(chnls=physical_channel)
+            pyo_input = pyo.Input(chnl=physical_channel)
             pyo_input.play()
             physical_channel_index_to_input_dict.update(
                 {physical_channel: pyo_input}
