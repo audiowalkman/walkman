@@ -464,7 +464,7 @@ class GUI(NestedUIElement):
         self.backend.audio_host.start()
 
         while True:
-            event, value_dict = window.read(timeout=0.85)
+            event, value_dict = window.read(timeout=10)
 
             # See if user wants to quit or window was closed
             if event == sg.WINDOW_CLOSED or event == "Quit":
