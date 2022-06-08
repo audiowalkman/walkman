@@ -226,13 +226,13 @@ class StartStopButton(Button):
 
     def handle_event(self, _: str, __: dict):
         if self.is_playing:
-            # self.backend.audio_host.stop()
             self.backend.cue_manager.current_cue.stop()
             self.stop_watch.stop()
+            self.gui_element.update(button_color='white')
         else:
             self.backend.cue_manager.current_cue.play()
             self.stop_watch.start()
-            # self.backend.cue_manager.current_cue.play()
+            self.gui_element.update(button_color='red')
         self.is_playing = not self.is_playing
 
     def tick(self):
