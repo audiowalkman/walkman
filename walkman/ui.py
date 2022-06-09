@@ -647,7 +647,6 @@ class Walkman(NestedUIElement):
         self,
         backend,
     ):
-        self.title = Title(backend)
         self.menu = WalkmanMenu(backend)
         self.about_text = AboutText(backend)
         self.audio_rotation_test = AudioRotationTest(backend)
@@ -655,7 +654,6 @@ class Walkman(NestedUIElement):
 
         ui_element_sequence = (
             self.cue_control,
-            self.title,
             self.menu,
             self.about_text,
             self.audio_rotation_test,
@@ -666,7 +664,6 @@ class Walkman(NestedUIElement):
     @functools.cached_property
     def gui_element(self) -> list:
         return [
-            [self.title.gui_element],
             [self.menu.gui_element],
             self.cue_control.gui_element,
             self.about_text.gui_element,
@@ -680,13 +677,15 @@ class NestedWindow(NestedUIElement):
         ui_element_sequence: typing.Sequence[UIElement],
         window_class: typing.Type[Window] = Window,
         window_name: str = walkman.constants.NAME,
-        window_kwargs: typing.Dict[str, typing.Any] = {
-            "return_keyboard_events": True,
-            "resizable": True,
-            "scaling": 3,
-        },
+        window_kwargs: typing.Dict[str, typing.Any] = {},
         **kwargs,
     ):
+        window_kwargs.update(
+            {
+                "resizable": True,
+                "scaling": 3,
+            }
+        )
         super().__init__(backend, ui_element_sequence, **kwargs)
         self.window_name = window_name
         self.window_kwargs = window_kwargs
@@ -805,12 +804,19 @@ class AudioRotationTest(NestedWindow):
 class GUI(NestedWindow):
     def __init__(
         self,
+        backend: walkman.Backend,
         *args,
         theme: str = "DarkBlack",
         **kwargs,
     ):
         sg.theme(theme)
-        super().__init__(*args, **kwargs)
+        super().__init__(
+            backend,
+            *args,
+            window_name=backend.name,
+            window_kwargs={"icon": walkman.constants.ICON},
+            **kwargs,
+        )
 
     def before_loop(self):
         super().before_loop()
