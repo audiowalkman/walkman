@@ -7,10 +7,11 @@ from .io import (
     ChannelMapping,
     dict_or_channel_mapping_to_channel_mapping,
 )
-from .audio import AudioObject, AudioHost
+from .audio import SimpleAudioObject, NestedAudioObject, AudioHost
 from .parameters import Parameter
 from .modules import Module, ModuleWithDecibel, ModuleDict
 from .cues import Cue, CueManager
+from . import tests
 from .backends import Backend
 from . import parsers
 from . import ui

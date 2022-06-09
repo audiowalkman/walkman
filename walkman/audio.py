@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import abc
-import functools
-import typing
 
 import pyo
 
@@ -10,10 +8,6 @@ import walkman
 
 
 class AudioObject(abc.ABC):
-    @abc.abstractproperty
-    def pyo_object(self) -> pyo.PyoObject:
-        ...
-
     @classmethod
     def get_name(cls) -> str:
         return walkman.utilities.camel_case_to_snake_case(cls.__name__)
@@ -21,6 +15,18 @@ class AudioObject(abc.ABC):
     def close(self):
         """Method is called when walkman is closed"""
         pass
+
+
+class SimpleAudioObject(AudioObject):
+    @abc.abstractproperty
+    def pyo_object(self) -> pyo.PyoObject:
+        ...
+
+
+class NestedAudioObject(AudioObject):
+    @abc.abstractproperty
+    def pyo_object_list(self) -> list[pyo.PyoObject]:
+        ...
 
 
 class AudioHost(object):
@@ -39,6 +45,7 @@ class AudioHost(object):
             {0: 0, 1: 1}
         ),
     ):
+        self._output_channel_mapping = output_channel_mapping
         self._is_playing = False
         self.server = pyo.Server(
             sr=sampling_rate,
@@ -49,6 +56,10 @@ class AudioHost(object):
             audio=audio,
             jackname=walkman.constants.NAME,
         ).boot()
+
+    @property
+    def output_channel_mapping(self) -> walkman.ChannelMapping:
+        return self._output_channel_mapping
 
     @property
     def is_playing(self) -> bool:

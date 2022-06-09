@@ -37,7 +37,7 @@ class UIElement(abc.ABC):
             event_list.extend(self.keyboard_key_tuple)
         return tuple(event_list)
 
-    def tick(self):
+    def tick(self, value_dict: dict):
         # Called in every loop part
         pass
 
@@ -67,8 +67,9 @@ class NestedUIElement(UIElement):
         self,
         backend,
         ui_element_sequence: typing.Sequence[UIElement],
+        **kwargs,
     ):
-        super().__init__(backend=backend)
+        super().__init__(backend=backend, **kwargs)
         self.ui_element_tuple = tuple(ui_element_sequence)
 
         event_to_ui_element_dict = {}
@@ -82,10 +83,25 @@ class NestedUIElement(UIElement):
 
     @functools.cached_property
     def event_tuple(self) -> typing.Tuple[str, ...]:
-        return functools.reduce(
-            operator.add,
-            (ui_element.event_tuple for ui_element in self.ui_element_tuple),
+        return (
+            functools.reduce(
+                operator.add,
+                (ui_element.event_tuple for ui_element in self.ui_element_tuple),
+            )
+            + super().event_tuple
         )
+
+    @property
+    def simple_ui_element_tuple(self) -> typing.Tuple[SimpleUIElement, ...]:
+        simple_ui_element_list = []
+        for ui_element in self.ui_element_tuple:
+            try:
+                simple_ui_element_tuple = ui_element.simple_ui_element_tuple
+            except AttributeError:
+                simple_ui_element_list.append(ui_element)
+            else:
+                simple_ui_element_list.extend(simple_ui_element_tuple)
+        return tuple(simple_ui_element_list)
 
     def handle_event(self, event: str, value_dict: dict):
         try:
@@ -95,9 +111,9 @@ class NestedUIElement(UIElement):
         else:
             return ui_element.handle_event(event, value_dict)
 
-    def tick(self):
+    def tick(self, value_dict: dict):
         for ui_element in self.ui_element_tuple:
-            ui_element.tick()
+            ui_element.tick(value_dict)
 
     @functools.cached_property
     def gui_element(self) -> list:
@@ -171,7 +187,7 @@ class StopWatch(UIElement):
     def handle_event(self, _: str, __: dict):
         self.update()
 
-    def tick(self):
+    def tick(self, value_dict: dict):
         self.update()
 
 
@@ -235,18 +251,35 @@ class FrozenText(SimpleUIElement):
 class Popup(SimpleUIElement):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, pysimple_gui_class=sg.Popup, **kwargs)
+        self.popup = None
 
     @functools.cached_property
     def gui_element(self) -> typing.Union[list, sg.Element]:
         return []
 
     def handle_event(self, _: str, value_dict: dict):
-        self.get_element_instance()
+        self.popup = self.get_element_instance()
+
+
+class Window(SimpleUIElement):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, pysimple_gui_class=sg.Window, **kwargs)
+
+
+class ModalWindow(Window):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.element_kwargs.update({"modal": True})
 
 
 class TitleBar(SimpleUIElement):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, pysimple_gui_class=sg.Titlebar, **kwargs)
+
+
+class Slider(SimpleUIElement):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, pysimple_gui_class=sg.Slider, **kwargs)
 
 
 class Title(TitleBar):
@@ -314,6 +347,8 @@ class Menu(SimpleUIElement):
 
 
 HELP_KEY = "Help"
+CHANNEL_TEST_KEY = "Channel test"
+ROTATION_CHANNEL_TEST_KEY = "Launch rotation test"
 
 
 class WalkmanMenu(Menu):
@@ -324,8 +359,8 @@ class WalkmanMenu(Menu):
             element_args=(
                 [
                     [
-                        "&Channel test",
-                        ["Launch rotation test", "Launch individual channel test"],
+                        f"&{CHANNEL_TEST_KEY}",
+                        [ROTATION_CHANNEL_TEST_KEY, "Launch individual channel test"],
                     ],
                     [f"&{HELP_KEY}", "&About..."],
                 ],
@@ -381,31 +416,96 @@ class JumpToTimeInputSeconds(JumpToTimeInput):
 
 
 class StartStopButton(Button):
-    def __init__(self, stop_watch: StopWatch, *args, **kwargs):
+    def __init__(
+        self,
+        *args,
+        key_tuple=("start_stop",),
+        element_kwargs={"button_text": "START // STOP"},
+        **kwargs,
+    ):
         super().__init__(
             *args,
-            element_kwargs={"button_text": "START // STOP"},
-            key_tuple=("start_stop",),
+            key_tuple=key_tuple,
+            element_kwargs=element_kwargs,
             keyboard_key_tuple=(" ", "space:65"),
             **kwargs,
         )
         self.is_playing = 0
-        self.stop_watch = stop_watch
+
+    def play(self):
+        self.gui_element.update(button_color="red")
+
+    def stop(self):
+        self.gui_element.update(button_color="white")
 
     def handle_event(self, _: str, __: dict):
         if self.is_playing:
-            self.backend.cue_manager.current_cue.stop()
-            self.stop_watch.stop()
-            self.gui_element.update(button_color="white")
+            self.stop()
         else:
-            self.backend.cue_manager.current_cue.play()
-            self.stop_watch.start()
-            self.gui_element.update(button_color="red")
+            self.play()
         self.is_playing = not self.is_playing
 
-    def tick(self):
+
+class WalkmanStartStopButton(StartStopButton):
+    def __init__(self, stop_watch: StopWatch, *args, **kwargs):
+        super().__init__(
+            *args,
+            **kwargs,
+        )
+        self.stop_watch = stop_watch
+
+    def play(self):
+        super().play()
+        self.gui_element.update(button_color="red")
+        self.backend.cue_manager.current_cue.play()
+        self.stop_watch.start()
+
+    def stop(self):
+        super().stop()
+        self.backend.cue_manager.current_cue.stop()
+        self.stop_watch.stop()
+
+    def tick(self, value_dict: dict):
         if self.is_playing:
-            self.stop_watch.tick()
+            self.stop_watch.tick(value_dict)
+
+
+class AudioTestStartStopButton(StartStopButton):
+    def __init__(self, *args, **kwargs):
+        super().__init__(
+            *args,
+            **kwargs,
+        )
+        self.audio_test = None
+
+    def play(self):
+        super().play()
+        if self.audio_test:
+            self.audio_test.play()
+
+    def stop(self):
+        super().stop()
+        if self.audio_test:
+            self.audio_test.stop()
+
+
+class AudioTestVolumeSlider(Slider):
+    def __init__(self, *args, **kwargs):
+        self.key = "volume"
+        super().__init__(
+            *args,
+            element_kwargs={"key": self.key, "range": (-120, 0), "resolution": 0.25},
+            **kwargs,
+        )
+        self.audio_test = None
+
+    def tick(self, value_dict: dict):
+        if (
+            self.audio_test
+            and value_dict
+            and (decibel := value_dict.get(self.key, None))
+        ):
+            self.audio_test.decibel = decibel
 
 
 class SelectCueMenu(UIElement):
@@ -495,7 +595,7 @@ class Transport(NestedUIElement):
         backend,
     ):
         self.stop_watch = StopWatch(backend)
-        self.start_stop_button = StartStopButton(self.stop_watch, backend)
+        self.start_stop_button = WalkmanStartStopButton(self.stop_watch, backend)
         self.select_cue_menu = SelectCueMenu(self.stop_watch, backend)
 
         ui_element_sequence = (
@@ -506,11 +606,11 @@ class Transport(NestedUIElement):
 
         super().__init__(backend, ui_element_sequence)
 
-    def tick(self):
+    def tick(self, value_dict: dict):
         for ui_element in self.ui_element_tuple:
             # Stop watch tick is handled in StartStopButton
             if ui_element != self.stop_watch:
-                ui_element.tick()
+                ui_element.tick(value_dict)
 
 
 class CueControl(NestedUIElement):
@@ -539,6 +639,7 @@ class Walkman(NestedUIElement):
         self.title = Title(backend)
         self.menu = WalkmanMenu(backend)
         self.about_text = AboutText(backend)
+        self.audio_rotation_test = AudioRotationTest(backend)
         self.cue_control = CueControl(backend)
 
         ui_element_sequence = (
@@ -546,6 +647,7 @@ class Walkman(NestedUIElement):
             self.title,
             self.menu,
             self.about_text,
+            self.audio_rotation_test,
         )
 
         super().__init__(backend, ui_element_sequence)
@@ -560,59 +662,154 @@ class Walkman(NestedUIElement):
         ]
 
 
-class GUI(NestedUIElement):
+class NestedWindow(NestedUIElement):
     def __init__(
         self,
         backend: walkman.Backend,
         ui_element_sequence: typing.Sequence[UIElement],
-        theme: str = "DarkBlack",
+        window_class: typing.Type[Window] = Window,
+        window_name: str = walkman.constants.NAME,
+        window_kwargs: typing.Dict[str, typing.Any] = {
+            "return_keyboard_events": True,
+            "resizable": True,
+            "scaling": 3,
+        },
+        **kwargs,
     ):
-        super().__init__(backend, ui_element_sequence)
-        sg.theme(theme)
+        super().__init__(backend, ui_element_sequence, **kwargs)
+        self.window_name = window_name
+        self.window_kwargs = window_kwargs
+        self.window_class = window_class
 
-    def loop(self):
-        window = sg.Window(
-            walkman.constants.NAME,
-            self.gui_element,
-            return_keyboard_events=True,
-            resizable=True,
-            scaling=3,
+    def set_window(self):
+        # Initialisation of windows have to be dynamic (so
+        # when closing and reopening windows we don't use the same
+        # layout, which is prohibited).
+        self.window = self.window_class(
+            self.backend,
+            element_args=(self.window_name, self.gui_element),
+            element_kwargs=self.window_kwargs,
         )
 
-        self.backend.audio_host.start()
+    def before_loop(self):
+        self.set_window()
+        self.pysimple_gui_window = self.window.get_element_instance()
+        self.pysimple_gui_window.finalize()
 
-        while True:
-            event, value_dict = window.read(timeout=1000)
-
-            # See if user wants to quit or window was closed
-            if event == sg.WINDOW_CLOSED or event == "Quit":
-                break
-
-            # Ignore timeout events
-            if event != sg.TIMEOUT_EVENT:
-                walkman.constants.LOGGER.debug(
-                    f"Catched event       = '{event}' \n"
-                    f"with value_dict     = '{value_dict}'\n."
-                )
-                try:
-                    self.handle_event(event, value_dict)
-                except Exception:
-                    walkman.constants.LOGGER.exception(
-                        f"Catched exception when handling event '{event}'"
-                        f"with value_dict = '{value_dict}': "
-                    )
-
+    def after_loop(self):
+        self.pysimple_gui_window.close()
+        del self.pysimple_gui_window
+        for ui_element in self.simple_ui_element_tuple + (self,):
             try:
-                self.tick()
+                del ui_element.gui_element
+            except AttributeError:
+                pass
+
+    def read(self, pysimple_gui_window: sg.Window) -> bool:
+        shall_break = False
+        event, value_dict = pysimple_gui_window.read(timeout=1000)
+
+        # See if user wants to quit or window was closed
+        if event == sg.WINDOW_CLOSED or event == "Quit":
+            shall_break = True
+
+        # Ignore timeout events
+        if event != sg.TIMEOUT_EVENT:
+            walkman.constants.LOGGER.debug(
+                f"Catched event       = '{event}' \n"
+                f"with value_dict     = '{value_dict}'\n."
+            )
+            try:
+                self.handle_event(event, value_dict)
             except Exception:
                 walkman.constants.LOGGER.exception(
-                    "Catched exception when running tick method: "
+                    f"Catched exception when handling event '{event}'"
+                    f"with value_dict = '{value_dict}': "
                 )
 
+        try:
+            self.tick(value_dict)
+        except Exception:
+            walkman.constants.LOGGER.exception(
+                "Catched exception when running tick method: "
+            )
+
+        return shall_break
+
+    def loop(self):
+        self.before_loop()
+        while True:
+            shall_break = self.read(self.pysimple_gui_window)
+            if shall_break:
+                break
+        self.after_loop()
+
+
+class AudioRotationTest(NestedWindow):
+    def __init__(self, backend: walkman.Backend, *args, **kwargs):
+        self.start_stop_button = AudioTestStartStopButton(backend)
+        self.volume_slider = AudioTestVolumeSlider(backend)
+        ui_element_tuple = (self.start_stop_button, self.volume_slider)
+        super().__init__(
+            backend,
+            ui_element_tuple,
+            window_class=ModalWindow,
+            key_tuple=(CHANNEL_TEST_KEY,),
+            window_kwargs={"finalize": True},
+            **kwargs,
+        )
+        self.event_tuple = self.key_tuple
+
+    def before_loop(self):
+        super().before_loop()
+        self.audio_rotation_test = self.backend.get_audio_test(
+            audio_test_class=walkman.tests.AudioRotationTest
+        )
+        self.start_stop_button.audio_test = self.audio_rotation_test
+        self.volume_slider.audio_test = self.audio_rotation_test
+
+    def after_loop(self):
+        super().after_loop()
+        self.audio_rotation_test.close()
+        self.start_stop_button.audio_rotation_test = None
+        del self.audio_rotation_test
+
+    def handle_event(self, event: str, value_dict: dict):
+        if (
+            value_dict
+            and value_dict.get(CHANNEL_TEST_KEY, None) == ROTATION_CHANNEL_TEST_KEY
+        ):
+            self.loop()
+        else:
+            super().handle_event(event, value_dict)
+
+    @property
+    def gui_element(self) -> list:
+        return [
+            [self.start_stop_button.gui_element],
+            [self.volume_slider.gui_element],
+        ]
+
+
+class GUI(NestedWindow):
+    def __init__(
+        self,
+        *args,
+        theme: str = "DarkBlack",
+        **kwargs,
+    ):
+        sg.theme(theme)
+        super().__init__(*args, **kwargs)
+
+    def before_loop(self):
+        super().before_loop()
+        self.backend.audio_host.start()
+
+    def after_loop(self):
+        super().after_loop()
         self.backend.cue_manager.current_cue.stop()
         self.backend.module_dict.close()
         self.backend.audio_host.close()
-        window.close()
 
 
 UI_CLASS_TUPLE = (Walkman,)

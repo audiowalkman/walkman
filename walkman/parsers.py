@@ -1,6 +1,7 @@
-import tomli
 import typing
 import warnings
+
+import tomli
 
 import walkman
 

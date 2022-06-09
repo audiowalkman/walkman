@@ -211,24 +211,24 @@ class OutputProvider(object):
             IllegalChannelIndexWarning,
         )
 
-    def register_audio_object(self, audio_object: walkman.AudioObject) -> MixerInfo:
+    def register_audio_object(self, simple_audio_object: walkman.SimpleAudioObject) -> MixerInfo:
         mixer_info = []
         base_index = walkman.utilities.get_next_mixer_index(self.module_mixer)
-        for audio_object_index in range(len(audio_object.pyo_object)):
-            pyo_channel = audio_object.pyo_object[audio_object_index]
+        for audio_object_index in range(len(simple_audio_object.pyo_object)):
+            pyo_channel = simple_audio_object.pyo_object[audio_object_index]
             mixer_index = base_index + audio_object_index
             self.module_mixer.addInput(mixer_index, pyo_channel)
             mixer_info.append(mixer_index)
         return tuple(mixer_info)
 
     def activate_channel_mapping(
-        self, audio_object: walkman.AudioObject, channel_mapping: ChannelMapping
+        self, simple_audio_object: walkman.SimpleAudioObject, channel_mapping: ChannelMapping
     ):
-        name = audio_object.get_name()
+        name = simple_audio_object.get_name()
         try:
             mixer_info = self.name_to_mixer_info[name]
         except KeyError:
-            mixer_info = self.register_audio_object(audio_object)
+            mixer_info = self.register_audio_object(simple_audio_object)
 
         for (
             audio_object_channel_index,
@@ -238,7 +238,7 @@ class OutputProvider(object):
                 mixer_index = mixer_info[audio_object_channel_index]
             except IndexError:
                 self._raise_illegal_audio_object_channel_warning(
-                    audio_object, channel_mapping, audio_object_channel_index
+                    simple_audio_object, channel_mapping, audio_object_channel_index
                 )
             else:
                 for output_channel_index in range(

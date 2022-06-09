@@ -1,4 +1,5 @@
 import dataclasses
+import typing
 
 import walkman
 
@@ -13,3 +14,11 @@ class Backend(object):
     output_provider: walkman.OutputProvider
     module_dict: walkman.ModuleDict
     cue_manager: walkman.CueManager
+
+    def get_audio_test(
+        self,
+        audio_test_class: typing.Type[
+            walkman.tests.AudioTest
+        ] = walkman.tests.AudioRotationTest,
+    ) -> walkman.tests.AudioTest:
+        return audio_test_class(self.audio_host.output_channel_mapping)

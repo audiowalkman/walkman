@@ -26,7 +26,7 @@ def override_default_kwargs(method_to_wrap: typing.Callable) -> typing.Callable:
 
 
 @dataclasses.dataclass
-class Module(walkman.AudioObject):
+class Module(walkman.SimpleAudioObject):
     """Interface for an isolated audio process."""
 
     audio_host: walkman.AudioHost
