@@ -21,8 +21,8 @@ class UIElement(abc.ABC):
     keyboard_key_tuple: typing.Optional[str] = None
 
     @property
-    def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
-        return None
+    def gui_element(self) -> typing.Union[list, sg.Element]:
+        return []
 
     @abc.abstractmethod
     def handle_event(self, event: str, value_dict: dict):
@@ -40,6 +40,72 @@ class UIElement(abc.ABC):
     def tick(self):
         # Called in every loop part
         pass
+
+
+@dataclasses.dataclass(frozen=True)
+class SimpleUIElement(UIElement):
+    element_args: tuple = tuple([])
+    element_kwargs: dict = dataclasses.field(default_factory=lambda: {})
+    pysimple_gui_class: typing.Optional[typing.Type[sg.Element]] = None
+
+    @functools.cached_property
+    def gui_element(self) -> typing.Union[list, sg.Element]:
+        if self.pysimple_gui_class:
+            return self.get_element_instance()
+        return None
+
+    def get_element_instance(self) -> sg.Element:
+        assert self.pysimple_gui_class is not None
+        return self.pysimple_gui_class(*self.element_args, **self.element_kwargs)
+
+    def handle_event(self, _: str, __: dict):
+        pass
+
+
+class NestedUIElement(UIElement):
+    def __init__(
+        self,
+        backend,
+        ui_element_sequence: typing.Sequence[UIElement],
+    ):
+        super().__init__(backend=backend)
+        self.ui_element_tuple = tuple(ui_element_sequence)
+
+        event_to_ui_element_dict = {}
+        for ui_element in self.ui_element_tuple:
+            for event in ui_element.event_tuple:
+                if event not in event_to_ui_element_dict:
+                    event_to_ui_element_dict.update({event: ui_element})
+                else:
+                    raise DuplicateEventError(event)
+        self.event_to_ui_element_dict = event_to_ui_element_dict
+
+    @functools.cached_property
+    def event_tuple(self) -> typing.Tuple[str, ...]:
+        return functools.reduce(
+            operator.add,
+            (ui_element.event_tuple for ui_element in self.ui_element_tuple),
+        )
+
+    def handle_event(self, event: str, value_dict: dict):
+        try:
+            ui_element = self.event_to_ui_element_dict[event]
+        except KeyError:
+            pass
+        else:
+            return ui_element.handle_event(event, value_dict)
+
+    def tick(self):
+        for ui_element in self.ui_element_tuple:
+            ui_element.tick()
+
+    @functools.cached_property
+    def gui_element(self) -> list:
+        return [
+            ui_element.gui_element
+            for ui_element in self.ui_element_tuple
+            if ui_element.gui_element
+        ]
 
 
 class StopWatch(UIElement):
@@ -76,7 +142,7 @@ class StopWatch(UIElement):
         return self._display_time
 
     @functools.cached_property
-    def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
+    def gui_element(self) -> typing.Union[list, sg.Element]:
         return sg.Text(self._get_update_string())
 
     def start(self):
@@ -113,14 +179,10 @@ class Volume(UIElement):
     pass
 
 
-class Button(UIElement):
-    def __init__(self, *args, button_kwargs={}, **kwargs):
-        self.button_kwargs = button_kwargs
-        super().__init__(*args, **kwargs)
-
-    @functools.cached_property
-    def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
-        return sg.Button(key=self.key_tuple[0], **self.button_kwargs)
+class Button(SimpleUIElement):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, pysimple_gui_class=sg.Button, **kwargs)
+        self.element_kwargs.update({"key": self.key_tuple[0]})
 
 
 class TooLargeTimeWarning(Warning):
@@ -146,7 +208,7 @@ class JumpToTimeButton(Button):
         super().__init__(
             *args,
             key_tuple=(self.key,),
-            button_kwargs={"button_text": "JUMP TO"},
+            element_kwargs={"button_text": "JUMP TO"},
             **kwargs,
         )
 
@@ -165,59 +227,38 @@ class JumpToTimeButton(Button):
             warnings.warn(TooLargeTimeWarning(time - cue_duration))
 
 
-class FrozenText(UIElement):
-    def __init__(self, *args, text_kwargs={}, **kwargs):
-        self.text_kwargs = text_kwargs
-        super().__init__(*args, **kwargs)
+class FrozenText(SimpleUIElement):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, pysimple_gui_class=sg.Text, **kwargs)
+
+
+class Popup(SimpleUIElement):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, pysimple_gui_class=sg.Popup, **kwargs)
 
     @functools.cached_property
-    def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
-        return sg.Text(**self.text_kwargs)
-
-    def handle_event(self, _: str, value_dict: dict):
-        pass
-
-
-class Popup(UIElement):
-    def __init__(
-        self, *args, popup_args: tuple = tuple([]), popup_kwargs: dict = {}, **kwargs
-    ):
-        self.popup_args = popup_args
-        self.popup_kwargs = popup_kwargs
-        super().__init__(*args, **kwargs)
-
-    @functools.cached_property
-    def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
+    def gui_element(self) -> typing.Union[list, sg.Element]:
         return []
 
     def handle_event(self, _: str, value_dict: dict):
-        print("POPUP")
-        sg.Popup(*self.popup_args, **self.popup_kwargs)
+        self.get_element_instance()
 
 
-class TitleBar(UIElement):
-    def __init__(self, *args, title_bar_kwargs={}, **kwargs):
-        self.title_bar_kwargs = title_bar_kwargs
-        super().__init__(*args, **kwargs)
-
-    @functools.cached_property
-    def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
-        return sg.Titlebar(**self.title_bar_kwargs)
-
-    def handle_event(self, _: str, __: dict):
-        pass
+class TitleBar(SimpleUIElement):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, pysimple_gui_class=sg.Titlebar, **kwargs)
 
 
 class Title(TitleBar):
     def __init__(self, backend: walkman.Backend, *args, **kwargs):
-        title_bar_kwargs = {
+        element_kwargs = {
             "title": f"{walkman.constants.NAME}: {backend.name}",
             "icon": walkman.constants.ICON,
         }
-        super().__init__(backend, *args, title_bar_kwargs=title_bar_kwargs, **kwargs)
+        super().__init__(backend, *args, element_kwargs=element_kwargs, **kwargs)
 
 
-class Menu(UIElement):
+class Menu(SimpleUIElement):
     sg.MENU_SHORTCUT_CHARACTER = "&"
 
     # Please see https://github.com/PySimpleGUI/PySimpleGUI/issues/4072#issuecomment-803355769
@@ -268,17 +309,8 @@ class Menu(UIElement):
             [row], background_color=background_color, pad=(0, 0), expand_x=True
         )
 
-    def __init__(self, *args, menu_definition: list = [], menu_kwargs={}, **kwargs):
-        self.menu_definition = menu_definition
-        self.menu_kwargs = menu_kwargs
-        super().__init__(*args, **kwargs)
-
-    @functools.cached_property
-    def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
-        return self.Menubar(self.menu_definition, **self.menu_kwargs)
-
-    def handle_event(self, _: str, __: dict):
-        pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, pysimple_gui_class=self.Menubar, **kwargs)
 
 
 HELP_KEY = "Help"
@@ -289,13 +321,15 @@ class WalkmanMenu(Menu):
         super().__init__(
             backend,
             *args,
-            menu_definition=[
+            element_args=(
                 [
-                    "&Channel test",
-                    ["Launch rotation test", "Launch individual channel test"],
+                    [
+                        "&Channel test",
+                        ["Launch rotation test", "Launch individual channel test"],
+                    ],
+                    [f"&{HELP_KEY}", "&About..."],
                 ],
-                [f"&{HELP_KEY}", "&About..."],
-            ],
+            ),
             **kwargs,
         )
 
@@ -307,7 +341,7 @@ class Logging(UIElement):
 
 class AboutText(Popup):
     def __init__(self, backend: walkman.Backend, *args, **kwargs):
-        popup_args = (
+        element_args = (
             f"Welcome to {walkman.constants.NAME}. "
             "This is a software for audio cue control. "
             "Please consult the github page "
@@ -317,7 +351,7 @@ class AboutText(Popup):
         super().__init__(
             backend,
             *args,
-            popup_args=popup_args,
+            element_args=element_args,
             key_tuple=(HELP_KEY,),
             **kwargs,
         )
@@ -325,7 +359,7 @@ class AboutText(Popup):
 
 class JumpToTimeInput(UIElement):
     @functools.cached_property
-    def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
+    def gui_element(self) -> typing.Union[list, sg.Element]:
         return sg.InputText(
             key=self.key_tuple[0], default_text="0", enable_events=False, size=(4, 1)
         )
@@ -350,7 +384,7 @@ class StartStopButton(Button):
     def __init__(self, stop_watch: StopWatch, *args, **kwargs):
         super().__init__(
             *args,
-            button_kwargs={"button_text": "START // STOP"},
+            element_kwargs={"button_text": "START // STOP"},
             key_tuple=("start_stop",),
             keyboard_key_tuple=(" ", "space:65"),
             **kwargs,
@@ -393,7 +427,7 @@ class SelectCueMenu(UIElement):
         self.value_count = len(self.value_tuple)
 
     @functools.cached_property
-    def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
+    def gui_element(self) -> typing.Union[list, sg.Element]:
         return sg.Combo(
             self.value_tuple,
             default_value=self.value_tuple[0],
@@ -429,52 +463,6 @@ class DuplicateEventError(Exception):
         super().__init__(f"Event '{event}' has been defined twice!")
 
 
-class NestedUIElement(UIElement):
-    def __init__(
-        self,
-        backend,
-        ui_element_sequence: typing.Sequence[UIElement],
-    ):
-        super().__init__(backend=backend)
-        self.ui_element_tuple = tuple(ui_element_sequence)
-
-        event_to_ui_element_dict = {}
-        for ui_element in self.ui_element_tuple:
-            for event in ui_element.event_tuple:
-                if event not in event_to_ui_element_dict:
-                    event_to_ui_element_dict.update({event: ui_element})
-                else:
-                    raise DuplicateEventError(event)
-        self.event_to_ui_element_dict = event_to_ui_element_dict
-
-    @functools.cached_property
-    def event_tuple(self) -> typing.Tuple[str, ...]:
-        return functools.reduce(
-            operator.add,
-            (ui_element.event_tuple for ui_element in self.ui_element_tuple),
-        )
-
-    def handle_event(self, event: str, value_dict: dict):
-        try:
-            ui_element = self.event_to_ui_element_dict[event]
-        except KeyError:
-            pass
-        else:
-            return ui_element.handle_event(event, value_dict)
-
-    def tick(self):
-        for ui_element in self.ui_element_tuple:
-            ui_element.tick()
-
-    @functools.cached_property
-    def gui_element(self) -> list:
-        return [
-            ui_element.gui_element
-            for ui_element in self.ui_element_tuple
-            if ui_element.gui_element
-        ]
-
-
 class JumpToTimeControl(NestedUIElement):
     def __init__(
         self,
@@ -493,9 +481,9 @@ class JumpToTimeControl(NestedUIElement):
         ui_element_sequence = (
             self.jump_to_time_button,
             self.jump_to_time_input_minutes,
-            FrozenText(backend, text_kwargs={"text": "MIN"}),
+            FrozenText(backend, element_kwargs={"text": "MIN"}),
             self.jump_to_time_input_seconds,
-            FrozenText(backend, text_kwargs={"text": "SEC"}),
+            FrozenText(backend, element_kwargs={"text": "SEC"}),
         )
 
         super().__init__(backend, ui_element_sequence)
@@ -582,20 +570,10 @@ class GUI(NestedUIElement):
         super().__init__(backend, ui_element_sequence)
         sg.theme(theme)
 
-    @property
-    def layout(self) -> list:
-        return [
-            [
-                ui_element.gui_element
-                for ui_element in self.ui_element_tuple
-                if ui_element.gui_element
-            ]
-        ]
-
     def loop(self):
         window = sg.Window(
             walkman.constants.NAME,
-            self.layout,
+            self.gui_element,
             return_keyboard_events=True,
             resizable=True,
             scaling=3,
