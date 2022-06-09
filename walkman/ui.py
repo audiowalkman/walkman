@@ -174,19 +174,153 @@ class FrozenText(UIElement):
     def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
         return sg.Text(**self.text_kwargs)
 
+    def handle_event(self, _: str, value_dict: dict):
+        pass
+
+
+class Popup(UIElement):
+    def __init__(
+        self, *args, popup_args: tuple = tuple([]), popup_kwargs: dict = {}, **kwargs
+    ):
+        self.popup_args = popup_args
+        self.popup_kwargs = popup_kwargs
+        super().__init__(*args, **kwargs)
+
+    @functools.cached_property
+    def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
+        return []
+
+    def handle_event(self, _: str, value_dict: dict):
+        print("POPUP")
+        sg.Popup(*self.popup_args, **self.popup_kwargs)
+
+
+class TitleBar(UIElement):
+    def __init__(self, *args, title_bar_kwargs={}, **kwargs):
+        self.title_bar_kwargs = title_bar_kwargs
+        super().__init__(*args, **kwargs)
+
+    @functools.cached_property
+    def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
+        return sg.Titlebar(**self.title_bar_kwargs)
+
     def handle_event(self, _: str, __: dict):
         pass
 
 
-class Title(FrozenText):
+class Title(TitleBar):
     def __init__(self, backend: walkman.Backend, *args, **kwargs):
-        text_kwargs = {"text": backend.name}
-        super().__init__(backend, *args, text_kwargs=text_kwargs, **kwargs)
+        title_bar_kwargs = {
+            "title": f"{walkman.constants.NAME}: {backend.name}",
+            "icon": walkman.constants.ICON,
+        }
+        super().__init__(backend, *args, title_bar_kwargs=title_bar_kwargs, **kwargs)
+
+
+class Menu(UIElement):
+    sg.MENU_SHORTCUT_CHARACTER = "&"
+
+    # Please see https://github.com/PySimpleGUI/PySimpleGUI/issues/4072#issuecomment-803355769
+    @staticmethod
+    def Menubar(
+        menu_definition,
+        text_color: str = "black",
+        background_color: str = "white",
+        pad=(0, 0),
+    ):
+        """
+        A User Defined element that simulates a Menu element by using ButtonMenu elements
+
+        :param menu_definition: A standard PySimpleGUI menu definition
+        :type menu_definition: List[List[Tuple[str, List[str]]]
+        :param text_color: color for the menubar's text
+        :type text_color:
+        :param background_color: color for the menubar's background
+        :type background_color:
+        :param pad: Amount of padding around each menu entry
+        :type pad:
+        :return: A column element that has a row of ButtonMenu buttons
+        :rtype: sg.Column
+        """
+        row = []
+        for menu in menu_definition:
+            text = menu[0]
+            if text.__contains__(sg.MENU_SHORTCUT_CHARACTER):
+                text = text.replace(sg.MENU_SHORTCUT_CHARACTER, "")
+            if text.startswith(sg.MENU_DISABLED_CHARACTER):
+                disabled = True
+                text = text[len(sg.MENU_DISABLED_CHARACTER) :]
+            else:
+                disabled = False
+            row += [
+                sg.ButtonMenu(
+                    text,
+                    menu,
+                    border_width=0,
+                    button_color=f"{text_color} on {background_color}",
+                    key=text,
+                    pad=pad,
+                    disabled=disabled,
+                )
+            ]
+
+        return sg.Column(
+            [row], background_color=background_color, pad=(0, 0), expand_x=True
+        )
+
+    def __init__(self, *args, menu_definition: list = [], menu_kwargs={}, **kwargs):
+        self.menu_definition = menu_definition
+        self.menu_kwargs = menu_kwargs
+        super().__init__(*args, **kwargs)
+
+    @functools.cached_property
+    def gui_element(self) -> typing.Optional[typing.Union[list, sg.Element]]:
+        return self.Menubar(self.menu_definition, **self.menu_kwargs)
+
+    def handle_event(self, _: str, __: dict):
+        pass
+
+
+HELP_KEY = "Help"
+
+
+class WalkmanMenu(Menu):
+    def __init__(self, backend: walkman.Backend, *args, **kwargs):
+        super().__init__(
+            backend,
+            *args,
+            menu_definition=[
+                [
+                    "&Channel test",
+                    ["Launch rotation test", "Launch individual channel test"],
+                ],
+                [f"&{HELP_KEY}", "&About..."],
+            ],
+            **kwargs,
+        )
 
 
 class Logging(UIElement):
     def handle_event(self, _: str, __: dict):
         pass
+
+
+class AboutText(Popup):
+    def __init__(self, backend: walkman.Backend, *args, **kwargs):
+        popup_args = (
+            f"Welcome to {walkman.constants.NAME}. "
+            "This is a software for audio cue control. "
+            "Please consult the github page "
+            "for futher information at "
+            "https://github.com/audiowalkman/walkman.",
+        )
+        super().__init__(
+            backend,
+            *args,
+            popup_args=popup_args,
+            key_tuple=(HELP_KEY,),
+            **kwargs,
+        )
 
 
 class JumpToTimeInput(UIElement):
@@ -218,7 +352,7 @@ class StartStopButton(Button):
             *args,
             button_kwargs={"button_text": "START // STOP"},
             key_tuple=("start_stop",),
-            keyboard_key_tuple=(" ", 'space:65'),
+            keyboard_key_tuple=(" ", "space:65"),
             **kwargs,
         )
         self.is_playing = 0
@@ -228,11 +362,11 @@ class StartStopButton(Button):
         if self.is_playing:
             self.backend.cue_manager.current_cue.stop()
             self.stop_watch.stop()
-            self.gui_element.update(button_color='white')
+            self.gui_element.update(button_color="white")
         else:
             self.backend.cue_manager.current_cue.play()
             self.stop_watch.start()
-            self.gui_element.update(button_color='red')
+            self.gui_element.update(button_color="red")
         self.is_playing = not self.is_playing
 
     def tick(self):
@@ -415,11 +549,15 @@ class Walkman(NestedUIElement):
         backend,
     ):
         self.title = Title(backend)
+        self.menu = WalkmanMenu(backend)
+        self.about_text = AboutText(backend)
         self.cue_control = CueControl(backend)
 
         ui_element_sequence = (
             self.cue_control,
             self.title,
+            self.menu,
+            self.about_text,
         )
 
         super().__init__(backend, ui_element_sequence)
@@ -428,7 +566,9 @@ class Walkman(NestedUIElement):
     def gui_element(self) -> list:
         return [
             [self.title.gui_element],
+            [self.menu.gui_element],
             self.cue_control.gui_element,
+            self.about_text.gui_element,
         ]
 
 
