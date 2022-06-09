@@ -41,6 +41,9 @@ class Module(walkman.AudioObject):
     parameter_name_to_parameter_dict: typing.Dict[
         str, walkman.Parameter
     ] = dataclasses.field(default_factory=lambda: {})
+    internal_pyo_object_list: typing.List[pyo.PyoObject] = dataclasses.field(
+        default_factory=lambda: []
+    )
 
     def __post_init__(self):
         self._is_playing = False
@@ -126,13 +129,13 @@ class Module(walkman.AudioObject):
     def _initialise(self, **kwargs):  # type: ignore
         ...
 
-    @abc.abstractmethod
     def _play(self, duration: float = 0, delay: float = 0):
-        ...
+        for internal_pyo_object in self.internal_pyo_object_list:
+            internal_pyo_object.play(dur=duration, delay=delay)
 
-    @abc.abstractmethod
     def _stop(self, wait: float = 0):
-        ...
+        for internal_pyo_object in self.internal_pyo_object_list:
+            internal_pyo_object.stop(wait=wait)
 
     # ################## PUBLIC PROPERTIES ################## #
 
@@ -209,16 +212,12 @@ class ModuleWithDecibel(Module):
         self._decibel_to_amplitude = pyo.DBToA(self._amplitude)
         self._decibel_signal_to = pyo.SigTo(self._decibel_to_amplitude, time=0.015)
 
+        self.internal_pyo_object_list.extend(
+            [self._amplitude, self._decibel_to_amplitude, self._decibel_signal_to]
+        )
+
     def _initialise(self, decibel: walkman.Parameter = -6, **kwargs):  # type: ignore
         self._amplitude.setValue(decibel.value)
-
-    def _play(self, duration: float = 0, delay: float = 0):
-        self._decibel_to_amplitude.play(delay=delay)
-        self._decibel_signal_to.play(delay=delay)
-
-    def _stop(self, wait: float = 0):
-        self._decibel_to_amplitude.stop(wait=wait)
-        self._decibel_signal_to.stop(wait=wait)
 
 
 ModuleName = str
