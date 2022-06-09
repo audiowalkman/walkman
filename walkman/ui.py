@@ -494,18 +494,29 @@ class AudioTestVolumeSlider(Slider):
         self.key = "volume"
         super().__init__(
             *args,
-            element_kwargs={"key": self.key, "range": (-120, 0), "resolution": 0.25},
+            element_kwargs={
+                "key": self.key,
+                "range": (-120, 0),
+                "resolution": 0.25,
+                "enable_events": True,
+            },
             **kwargs,
         )
         self.audio_test = None
 
-    def tick(self, value_dict: dict):
+    def set_decibel(self, value_dict: dict):
         if (
             self.audio_test
             and value_dict
             and (decibel := value_dict.get(self.key, None))
         ):
             self.audio_test.decibel = decibel
+
+    def handle_event(self, event: str, value_dict: dict):
+        self.set_decibel(value_dict)
+
+    def tick(self, value_dict: dict):
+        self.set_decibel(value_dict)
 
 
 class SelectCueMenu(UIElement):
