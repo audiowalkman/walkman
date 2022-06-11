@@ -15,5 +15,4 @@ from . import tests
 from .backends import Backend
 from . import parsers
 from . import ui
-
-from . import __main__
+from .boot import start_loop_from_jinja2_file_path, start_loop_from_toml_str

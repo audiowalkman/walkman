@@ -9,7 +9,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="audiowalkman",
-    version=version['__version__'],
+    version=version["__version__"],
     license="GPL",
     description="play audio files in performance contexts",
     long_description=long_description,
@@ -26,7 +26,9 @@ setuptools.setup(
         # for CLI
         "click==8.1.3",
         # to read config files
-        "tomli==2.0.1", 
+        "tomli==2.0.1",
+        # to parse jinja2 syntax in config files
+        "jinja2==3.1.2",
     ],
     extras_require={"testing": ["nose"]},
     python_requires="==3.8",

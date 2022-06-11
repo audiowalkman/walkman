@@ -1,6 +1,7 @@
 import typing
 import warnings
 
+import jinja2
 import tomli
 
 import walkman
@@ -171,4 +172,11 @@ def toml_str_to_backend(
 def toml_file_path_to_backend(toml_file_path: str) -> walkman.Backend:
     with open(toml_file_path, "r") as toml_file:
         toml_str = toml_file.read()
+    return toml_str_to_backend(toml_str)
+
+
+def jinja2_file_path_to_backend(jinja2_file_path: str) -> walkman.Backend:
+    environment = jinja2.Environment(loader=jinja2.FileSystemLoader("./"))
+    template = environment.get_template(jinja2_file_path)
+    toml_str = template.render()
     return toml_str_to_backend(toml_str)
