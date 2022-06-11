@@ -271,6 +271,8 @@ class ModuleWithDecibelControlledAutoStartStop(ModuleWithDecibel):
         super().play(duration, delay)
         for auto_start_stop_pyo_object in self._auto_start_stop_pyo_object_list:
             auto_start_stop_pyo_object.play(dur=duration, delay=delay)
+        if self._decibel_value < self.decibel_threshold:
+            self._stop()
         return self
 
     def stop(self, wait: float = 0) -> Module:
