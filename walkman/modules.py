@@ -208,11 +208,11 @@ class ModuleWithDecibel(Module):
     def setup_pyo_object(self):
         # Default audio objects, used to control default parameter
         # 'decibel'
-        self._amplitude = pyo.Sig(0)
-        self._decibel_to_amplitude = pyo.DBToA(self._amplitude)
+        self._decibel_value = pyo.Sig(0)
+        self._decibel_to_amplitude = pyo.DBToA(self._decibel_value)
         self._decibel_signal_to = pyo.SigTo(self._decibel_to_amplitude, time=0.015)
 
-        # XXX: We SHOULD NOT add self._amplitude to 'internal_pyo_object_list', because
+        # XXX: We SHOULD NOT add self._decibel_value to 'internal_pyo_object_list', because
         # 'ModuleWithDecibelControlledAutoStartStop' needs a running function to detect
         # of module should be stopped.
         self.internal_pyo_object_list.extend(
@@ -220,16 +220,16 @@ class ModuleWithDecibel(Module):
         )
 
     def _initialise(self, decibel: walkman.Parameter = -6, **kwargs):  # type: ignore
-        self._amplitude.setValue(decibel.value)
+        self._decibel_value.setValue(decibel.value)
 
     def play(self, duration: float = 0, delay: float = 0) -> Module:
-        self._amplitude.play(dur=duration, delay=delay)
+        self._decibel_value.play(dur=duration, delay=delay)
         super().play(duration, delay)
         return self
 
     def stop(self, wait: float = 0) -> Module:
-        self._amplitude.stop(wait)
         super().stop(wait)
+        self._decibel_value.stop(wait)
         return self
 
 
@@ -244,14 +244,14 @@ class ModuleWithDecibelControlledAutoStartStop(ModuleWithDecibel):
         # of program (if module is so quiet that it can't be heard it
         # should be stopped).
         self._rising_decibel_tracker = pyo.Thresh(
-            self._amplitude, self.decibel_threshold, dir=0
+            self._decibel_value, self.decibel_threshold, dir=0
         ).play()
         self._auto_start_trigger = pyo.TrigFunc(
             self._rising_decibel_tracker, self._play
         ).play()
 
         self._falling_decibel_tracker = pyo.Thresh(
-            self._amplitude, self.decibel_threshold, dir=1
+            self._decibel_value, self.decibel_threshold, dir=1
         ).play()
         self._auto_stop_trigger = pyo.TrigFunc(
             self._falling_decibel_tracker, self._stop
