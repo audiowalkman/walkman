@@ -204,10 +204,7 @@ class Module(walkman.SimpleAudioObject):
         pass
 
 
-@dataclasses.dataclass()
 class ModuleWithDecibel(Module):
-    decibel_threshold: float = -100
-
     def setup_pyo_object(self):
         # Default audio objects, used to control default parameter
         # 'decibel'
@@ -215,32 +212,59 @@ class ModuleWithDecibel(Module):
         self._decibel_to_amplitude = pyo.DBToA(self._amplitude)
         self._decibel_signal_to = pyo.SigTo(self._decibel_to_amplitude, time=0.015)
 
-        # Initialise auto-start / auto-stop triggers, to improve performance
-        # of program (if module is so quiet that it can't be heard it
-        # should be stopped).
-        self._falling_decibel_tracker = pyo.Thresh(
-            self._amplitude, self.decibel_threshold, dir=0
-        ).play()
-        self._auto_start_trigger = pyo.TrigFunc(
-            self._falling_decibel_tracker, self.play
-        ).play()
-
-        self._rising_decibel_tracker = pyo.Thresh(
-            self._amplitude, self.decibel_threshold, dir=1
-        ).play()
-        self._auto_stop_trigger = pyo.TrigFunc(
-            self._rising_decibel_tracker, self.stop
-        ).play()
-
-        # XXX: We don't add the trigger and tracker objects
-        # to the `internal_pyo_object_list`, because they should always play
-        # and never be stopped!
         self.internal_pyo_object_list.extend(
             [self._amplitude, self._decibel_to_amplitude, self._decibel_signal_to]
         )
 
     def _initialise(self, decibel: walkman.Parameter = -6, **kwargs):  # type: ignore
         self._amplitude.setValue(decibel.value)
+
+
+@dataclasses.dataclass()
+class ModuleWithDecibelControlledAutoStartStop(ModuleWithDecibel):
+    decibel_threshold: float = -100
+
+    def setup_pyo_object(self):
+        super().setup_pyo_object()
+
+        # Initialise auto-start / auto-stop triggers, to improve performance
+        # of program (if module is so quiet that it can't be heard it
+        # should be stopped).
+        self._rising_decibel_tracker = pyo.Thresh(
+            self._amplitude, self.decibel_threshold, dir=0
+        ).play()
+        self._auto_start_trigger = pyo.TrigFunc(
+            self._rising_decibel_tracker, self._play
+        ).play()
+
+        self._falling_decibel_tracker = pyo.Thresh(
+            self._amplitude, self.decibel_threshold, dir=1
+        ).play()
+        self._auto_stop_trigger = pyo.TrigFunc(
+            self._falling_decibel_tracker, self._stop
+        ).play()
+
+        # XXX: We don't add the trigger and tracker objects
+        # to the `internal_pyo_object_list`, because they should always play
+        # and never be stopped!
+        self._auto_start_stop_pyo_object_list = [
+            self._rising_decibel_tracker,
+            self._auto_start_trigger,
+            self._falling_decibel_tracker,
+            self._auto_stop_trigger,
+        ]
+
+    def play(self, duration: float = 0, delay: float = 0) -> Module:
+        super().play(duration, delay)
+        for auto_start_stop_pyo_object in self._auto_start_stop_pyo_object_list:
+            auto_start_stop_pyo_object.play(dur=duration, delay=delay)
+        return self
+
+    def stop(self, wait: float = 0) -> Module:
+        super().stop(wait)
+        for auto_start_stop_pyo_object in self._auto_start_stop_pyo_object_list:
+            auto_start_stop_pyo_object.stop(wait)
+        return self
 
 
 ModuleName = str
