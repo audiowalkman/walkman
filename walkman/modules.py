@@ -204,7 +204,10 @@ class Module(walkman.SimpleAudioObject):
         pass
 
 
+@dataclasses.dataclass()
 class ModuleWithDecibel(Module):
+    decibel_threshold: float = -100
+
     def setup_pyo_object(self):
         # Default audio objects, used to control default parameter
         # 'decibel'
@@ -212,6 +215,26 @@ class ModuleWithDecibel(Module):
         self._decibel_to_amplitude = pyo.DBToA(self._amplitude)
         self._decibel_signal_to = pyo.SigTo(self._decibel_to_amplitude, time=0.015)
 
+        # Initialise auto-start / auto-stop triggers, to improve performance
+        # of program (if module is so quiet that it can't be heard it
+        # should be stopped).
+        self._falling_decibel_tracker = pyo.Thresh(
+            self._amplitude, self.decibel_threshold, dir=0
+        ).play()
+        self._auto_start_trigger = pyo.TrigFunc(
+            self._falling_decibel_tracker, self.play
+        ).play()
+
+        self._rising_decibel_tracker = pyo.Thresh(
+            self._amplitude, self.decibel_threshold, dir=1
+        ).play()
+        self._auto_stop_trigger = pyo.TrigFunc(
+            self._rising_decibel_tracker, self.stop
+        ).play()
+
+        # XXX: We don't add the trigger and tracker objects
+        # to the `internal_pyo_object_list`, because they should always play
+        # and never be stopped!
         self.internal_pyo_object_list.extend(
             [self._amplitude, self._decibel_to_amplitude, self._decibel_signal_to]
         )
