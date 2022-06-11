@@ -22,13 +22,13 @@ setuptools.setup(
         # for audio
         "pyo==1.0.4",
         # for GUI
-        "PySimpleGUI==4.60.0",
+        "PySimpleGUI>=4.60.0, <5.0.0",
         # for CLI
-        "click==8.1.3",
+        "click>=8.1.3, <9.0.0",
         # to read config files
-        "tomli==2.0.1",
+        "tomli>=2.0.1, <3.0.0",
         # to parse jinja2 syntax in config files
-        "jinja2==3.1.2",
+        "jinja2>=3.1.2, <4.0.0",
     ],
     extras_require={"testing": ["nose"]},
     python_requires="==3.8",
