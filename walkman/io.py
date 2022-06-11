@@ -194,7 +194,7 @@ class OutputProvider(object):
                 )
 
         for channel_index, channel in enumerate(self.output_mixer):
-            channel[0].out(channel_index)
+            channel[0].out(chnl=channel_index)
 
     def _raise_illegal_audio_object_channel_warning(
         self,
@@ -241,10 +241,10 @@ class OutputProvider(object):
                     simple_audio_object, channel_mapping, audio_object_channel_index
                 )
             else:
-                for output_channel_index in range(
-                    self.channel_mapping.maxima_right_channel
+                for module_output_channel_index in range(
+                    self.module_channel_count
                 ):
-                    amplitude = int(output_channel_index in output_channel_index_tuple)
+                    amplitude = int(module_output_channel_index in output_channel_index_tuple)
                     self.module_mixer.setAmp(
-                        mixer_index, output_channel_index, amplitude
+                        mixer_index, module_output_channel_index, amplitude
                     )
