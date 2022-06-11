@@ -229,7 +229,7 @@ class ModuleWithDecibel(Module):
 
     def stop(self, wait: float = 0) -> Module:
         super().stop(wait)
-        self._decibel_value.stop(wait)
+        self._decibel_value.stop(wait + self.fade_out_duration)
         return self
 
 
