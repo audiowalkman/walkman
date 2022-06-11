@@ -9,7 +9,12 @@ from .io import (
 )
 from .audio import SimpleAudioObject, NestedAudioObject, AudioHost
 from .parameters import Parameter
-from .modules import Module, ModuleWithDecibel, ModuleDict
+from .modules import (
+    Module,
+    ModuleWithDecibel,
+    ModuleWithDecibelControlledAutoStartStop,
+    ModuleDict,
+)
 from .cues import Cue, CueManager
 from . import tests
 from .backends import Backend
