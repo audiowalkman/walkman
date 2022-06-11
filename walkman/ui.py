@@ -684,6 +684,7 @@ class NestedWindow(NestedUIElement):
             {
                 "resizable": True,
                 "scaling": 3,
+                "return_keyboard_events": True,
             }
         )
         super().__init__(backend, ui_element_sequence, **kwargs)
