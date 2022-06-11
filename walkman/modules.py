@@ -212,12 +212,25 @@ class ModuleWithDecibel(Module):
         self._decibel_to_amplitude = pyo.DBToA(self._amplitude)
         self._decibel_signal_to = pyo.SigTo(self._decibel_to_amplitude, time=0.015)
 
+        # XXX: We SHOULD NOT add self._amplitude to 'internal_pyo_object_list', because
+        # 'ModuleWithDecibelControlledAutoStartStop' needs a running function to detect
+        # of module should be stopped.
         self.internal_pyo_object_list.extend(
-            [self._amplitude, self._decibel_to_amplitude, self._decibel_signal_to]
+            [self._decibel_to_amplitude, self._decibel_signal_to]
         )
 
     def _initialise(self, decibel: walkman.Parameter = -6, **kwargs):  # type: ignore
         self._amplitude.setValue(decibel.value)
+
+    def play(self, duration: float = 0, delay: float = 0) -> Module:
+        self._amplitude.play(dur=duration, delay=delay)
+        super().play(duration, delay)
+        return self
+
+    def stop(self, wait: float = 0) -> Module:
+        self._amplitude.stop(wait)
+        super().stop(wait)
+        return self
 
 
 @dataclasses.dataclass()
