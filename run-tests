@@ -1,0 +1,12 @@
+#!/usr/bin/bash
+
+VIRTUALENV_PATH=".venv"
+VIRTUALENV_BIN_PATH="$VIRTUALENV_PATH/bin"
+PIP_PATH="$VIRTUALENV_BIN_PATH/pip3"
+BUILDOUT_BOOTSTRAP_PATH="$VIRTUALENV_BIN_PATH/buildout"
+
+python3 -m venv $VIRTUALENV_PATH
+$PIP_PATH install zc.buildout
+$BUILDOUT_BOOTSTRAP_PATH -c automatic_test.cfg bootstrap 
+bin/buildout -c automatic_test.cfg
+bin/run-tests

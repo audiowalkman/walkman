@@ -171,3 +171,5 @@ develop-eggs/*
 */eggs/*
 */develop-eggs/*
 tests/manual/bin/
+
+automatic-test/*

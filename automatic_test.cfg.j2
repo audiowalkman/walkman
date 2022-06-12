@@ -1,0 +1,20 @@
+[buildout]
+parts = automatic-test
+develop = ../.
+versions = versions
+
+[automatic-test]
+recipe = zc.recipe.egg
+entry-points = nosetests=nose:run_exit
+eggs =
+    audiowalkman
+    {% for module in module_dict.keys() %}
+    {{ module }}
+    {% endfor %}
+    nose
+
+[versions]
+audiowalkman = {{ audiowalkman_version }}
+{% for module, version in module_dict.items() %}
+{{ module }} = {{ version }}
+{% endfor %}

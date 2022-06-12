@@ -96,3 +96,17 @@ factor = 4
 ```bash
 walkman my_composition.toml
 ```
+
+## Tests
+
+### Automatic
+
+The `run-tests` script setups a test environment and runs automatic unit tests.
+
+```bash
+./run-tests
+```
+
+### Manual
+
+Please consult the respective [README](https://github.com/audiowalkman/walkman/blob/main/tests/manual/README.md).
