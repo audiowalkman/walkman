@@ -165,4 +165,9 @@ bin/*
 parts/*
 eggs/*
 develop-eggs/*
+
+*/bin/*
+*/parts/*
+*/eggs/*
+*/develop-eggs/*
 tests/manual/bin/
