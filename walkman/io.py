@@ -224,11 +224,12 @@ class OutputProvider(object):
     def activate_channel_mapping(
         self, simple_audio_object: walkman.SimpleAudioObject, channel_mapping: ChannelMapping
     ):
-        name = simple_audio_object.get_name()
+        name = simple_audio_object.name
         try:
             mixer_info = self.name_to_mixer_info[name]
         except KeyError:
             mixer_info = self.register_audio_object(simple_audio_object)
+            self.name_to_mixer_info.update({name: mixer_info})
 
         for (
             audio_object_channel_index,

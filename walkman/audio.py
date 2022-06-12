@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import abc
+import functools
+import uuid
 
 import pyo
 
@@ -10,7 +12,13 @@ import walkman
 class AudioObject(abc.ABC):
     @classmethod
     def get_name(cls) -> str:
+        # class name
         return walkman.utilities.camel_case_to_snake_case(cls.__name__)
+
+    @functools.cached_property
+    def name(self) -> str:
+        # unique instance name
+        return f"{self.get_name()}-{uuid.uuid4()}"
 
     def close(self):
         """Method is called when walkman is closed"""
