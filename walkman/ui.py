@@ -489,28 +489,44 @@ class AudioTestStartStopButton(StartStopButton):
             self.audio_test.stop()
 
 
-class AudioTestVolumeSlider(Slider):
-    def __init__(self, *args, **kwargs):
-        self.key = "volume"
+class VolumeSlider(Slider):
+    def __init__(
+        self,
+        *args,
+        default_value: typing.Optional[float] = None,
+        key_suffix: str = "",
+        volume_range: typing.Tuple[float, float] = (-120, 0),
+        resolution: float = 0.25,
+        audio_object_with_decibel: typing.Optional[
+            walkman.AudioObjectWithDecibel
+        ] = None,
+        orientation: str = "horizontal",
+        tooltip: typing.Optional[str] = None,
+        **kwargs,
+    ):
+        self.key = f"volume_{key_suffix}"
         super().__init__(
             *args,
             element_kwargs={
+                "default_value": default_value,
                 "key": self.key,
-                "range": (-120, 0),
-                "resolution": 0.25,
+                "range": volume_range,
+                "resolution": resolution,
+                "orientation": orientation,
                 "enable_events": True,
+                "tooltip": tooltip,
             },
             **kwargs,
         )
-        self.audio_test = None
+        self.audio_object_with_decibel = audio_object_with_decibel
 
     def set_decibel(self, value_dict: dict):
         if (
-            self.audio_test
+            self.audio_object_with_decibel
             and value_dict
             and (decibel := value_dict.get(self.key, None))
         ):
-            self.audio_test.decibel = decibel
+            self.audio_object_with_decibel.decibel = decibel
 
     def handle_event(self, event: str, value_dict: dict):
         self.set_decibel(value_dict)
@@ -633,10 +649,17 @@ class CueControl(NestedUIElement):
         self.jump_to_time_control = JumpToTimeControl(
             self.transport.stop_watch, backend
         )
+        self.volume_slider = VolumeSlider(
+            backend,
+            key_suffix="master",
+            audio_object_with_decibel=backend.output_provider,
+            tooltip="Set volume of master output",
+        )
 
         ui_element_sequence = (
             self.transport,
             self.jump_to_time_control,
+            self.volume_slider,
         )
 
         super().__init__(backend, ui_element_sequence)
@@ -759,7 +782,7 @@ class NestedWindow(NestedUIElement):
 class AudioRotationTest(NestedWindow):
     def __init__(self, backend: walkman.Backend, *args, **kwargs):
         self.start_stop_button = AudioTestStartStopButton(backend)
-        self.volume_slider = AudioTestVolumeSlider(backend)
+        self.volume_slider = VolumeSlider(backend, key_suffix="rotation_test")
         ui_element_tuple = (self.start_stop_button, self.volume_slider)
         super().__init__(
             backend,
@@ -777,7 +800,7 @@ class AudioRotationTest(NestedWindow):
             audio_test_class=walkman.tests.AudioRotationTest
         )
         self.start_stop_button.audio_test = self.audio_rotation_test
-        self.volume_slider.audio_test = self.audio_rotation_test
+        self.volume_slider.audio_object_with_decibel = self.audio_rotation_test
 
     def after_loop(self):
         super().after_loop()

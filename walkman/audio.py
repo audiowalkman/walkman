@@ -37,6 +37,17 @@ class NestedAudioObject(AudioObject):
         ...
 
 
+class AudioObjectWithDecibel(AudioObject):
+    @abc.abstractproperty
+    def decibel(self) -> float:
+        ...
+
+    @decibel.setter
+    @abc.abstractproperty
+    def decibel(self, decibel: float):
+        ...
+
+
 class AudioHost(object):
     """Wrapper for pyo.Server and pyo.Mixer.
 

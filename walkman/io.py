@@ -10,72 +10,6 @@ import pyo
 import walkman
 
 
-class ChannelMapping(typing.Dict[int, typing.Tuple[int, ...]]):
-    """Map audio channels to other audio channels.
-
-    Left side is always one channel, right side can be one
-    or more channels.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Hack to ensure key/values are integer
-        key_to_remove_list = []
-        update_dict = {}
-        for key, value in self.items():
-            if not isinstance(key, int):
-                key_to_remove_list.append(key)
-            if isinstance(value, (str, int)):
-                output_channel_list = [value]
-            else:
-                output_channel_list = value
-            output_channel_tuple = tuple(
-                int(output_channel) for output_channel in output_channel_list
-            )
-            update_dict[int(key)] = output_channel_tuple
-        self.update(update_dict)
-        for key in key_to_remove_list:
-            del self[key]
-
-    @property
-    def left_channel_set(self) -> typing.Set[int]:
-        return set(self.keys())
-
-    @property
-    def maxima_left_channel(self) -> int:
-        return max(self.left_channel_set) + 1
-
-    @property
-    def right_channel_tuple_tuple(self) -> typing.Tuple[typing.Tuple[int, ...], ...]:
-        return tuple(self.values())
-
-    @property
-    def right_channel_set(self) -> typing.Set[int]:
-        right_channel_set = set([])
-        for right_channel_tuple in self.right_channel_tuple_tuple:
-            for right_channel in right_channel_tuple:
-                right_channel_set.add(right_channel)
-        return right_channel_set
-
-    @property
-    def maxima_right_channel(self) -> int:
-        return max(self.right_channel_set) + 1
-
-    def to_mixer(self) -> pyo.Mixer:
-        return pyo.Mixer(outs=self.maxima_right_channel)
-
-
-def dict_or_channel_mapping_to_channel_mapping(
-    dict_or_channel_mapping_to_channel_mapping: typing.Union[dict, ChannelMapping]
-) -> ChannelMapping:
-    if not isinstance(dict_or_channel_mapping_to_channel_mapping, ChannelMapping):
-        channel_mapping = ChannelMapping(dict_or_channel_mapping_to_channel_mapping)
-    else:
-        channel_mapping = dict_or_channel_mapping_to_channel_mapping
-    return channel_mapping
-
-
 MidiControlNumber = int
 MidiChannel = int
 MidiControlList = typing.List[typing.Tuple[MidiControlNumber, MidiChannel]]
@@ -93,7 +27,7 @@ class InputProvider(object):
 
     @staticmethod
     def channel_mapping_to_audio_input_list(
-        channel_mapping: ChannelMapping,
+        channel_mapping: walkman.ChannelMapping,
     ) -> AudioInputList:
         if not channel_mapping:
             return []
@@ -102,9 +36,7 @@ class InputProvider(object):
         for physical_channel in channel_mapping.keys():
             pyo_input = pyo.Input(chnl=physical_channel)
             pyo_input.play()
-            physical_channel_index_to_input_dict.update(
-                {physical_channel: pyo_input}
-            )
+            physical_channel_index_to_input_dict.update({physical_channel: pyo_input})
 
         denormal_noise = pyo.Noise(1e-24)
         denormal_noise.play()
@@ -134,10 +66,12 @@ class InputProvider(object):
     @classmethod
     def from_data(
         cls,
-        channel_mapping: typing.Union[dict, ChannelMapping] = ChannelMapping({}),
+        channel_mapping: typing.Union[
+            dict, walkman.ChannelMapping
+        ] = walkman.ChannelMapping({}),
         midi_control_list: MidiControlList = [],
     ) -> InputProvider:
-        channel_mapping = dict_or_channel_mapping_to_channel_mapping(channel_mapping)
+        channel_mapping = walkman.dict_or_channel_mapping_to_channel_mapping(channel_mapping)
         audio_input_list = cls.channel_mapping_to_audio_input_list(channel_mapping)
         midi_input_list = cls.midi_control_list_to_midi_input_list(midi_control_list)
         return cls(audio_input_list=audio_input_list, midi_input_list=midi_input_list)
@@ -159,11 +93,11 @@ class PyoObjectMixer(pyo.PyoObject):
 
 
 @dataclasses.dataclass
-class OutputProvider(object):
+class OutputProvider(walkman.AudioObjectWithDecibel):
     """Collect all outputs from modules and send them to physical outputs"""
 
-    channel_mapping: ChannelMapping = dataclasses.field(
-        default_factory=lambda: ChannelMapping({0: 0, 1: 1})
+    channel_mapping: walkman.ChannelMapping = dataclasses.field(
+        default_factory=lambda: walkman.ChannelMapping({0: 0, 1: 1})
     )
     output_mixer: pyo.Mixer = dataclasses.field(init=False)
     module_mixer: pyo.Mixer = dataclasses.field(init=False)
@@ -174,13 +108,18 @@ class OutputProvider(object):
     )
 
     def __post_init__(self):
-        self.channel_mapping = dict_or_channel_mapping_to_channel_mapping(
+        self.channel_mapping = walkman.dict_or_channel_mapping_to_channel_mapping(
             self.channel_mapping
         )
         self.module_channel_count = self.channel_mapping.maxima_left_channel
         self.physical_output_channel_count = self.channel_mapping.maxima_right_channel
         self.module_mixer = pyo.Mixer(outs=self.module_channel_count)
-        self.output_mixer = pyo.Mixer(outs=self.physical_output_channel_count)
+
+        self._decibel = pyo.SigTo(0)
+        self._amplitude = pyo.DBToA(self._decibel)
+        self.output_mixer = pyo.Mixer(
+            outs=self.physical_output_channel_count, mul=self._amplitude
+        )
 
         for (
             module_channel_index,
@@ -199,7 +138,7 @@ class OutputProvider(object):
     def _raise_illegal_audio_object_channel_warning(
         self,
         audio_object: walkman.AudioObject,
-        channel_mapping: ChannelMapping,
+        channel_mapping: walkman.ChannelMapping,
         audio_object_channel_index: int,
     ):
         warnings.warn(
@@ -211,7 +150,17 @@ class OutputProvider(object):
             IllegalChannelIndexWarning,
         )
 
-    def register_audio_object(self, simple_audio_object: walkman.SimpleAudioObject) -> MixerInfo:
+    @property
+    def decibel(self) -> float:
+        return self._decibel.getValue()
+
+    @decibel.setter
+    def decibel(self, value: float) -> float:
+        self._decibel.setValue(value)
+
+    def register_audio_object(
+        self, simple_audio_object: walkman.SimpleAudioObject
+    ) -> MixerInfo:
         mixer_info = []
         base_index = walkman.utilities.get_next_mixer_index(self.module_mixer)
         for audio_object_index in range(len(simple_audio_object.pyo_object)):
@@ -222,7 +171,9 @@ class OutputProvider(object):
         return tuple(mixer_info)
 
     def activate_channel_mapping(
-        self, simple_audio_object: walkman.SimpleAudioObject, channel_mapping: ChannelMapping
+        self,
+        simple_audio_object: walkman.SimpleAudioObject,
+        channel_mapping: walkman.ChannelMapping,
     ):
         name = simple_audio_object.name
         try:
@@ -242,10 +193,10 @@ class OutputProvider(object):
                     simple_audio_object, channel_mapping, audio_object_channel_index
                 )
             else:
-                for module_output_channel_index in range(
-                    self.module_channel_count
-                ):
-                    amplitude = int(module_output_channel_index in output_channel_index_tuple)
+                for module_output_channel_index in range(self.module_channel_count):
+                    amplitude = int(
+                        module_output_channel_index in output_channel_index_tuple
+                    )
                     self.module_mixer.setAmp(
                         mixer_index, module_output_channel_index, amplitude
                     )

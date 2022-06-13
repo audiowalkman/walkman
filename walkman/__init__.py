@@ -1,14 +1,22 @@
 from .version import __version__
 from . import constants
 from . import utilities
+
+from .channel_mappings import (
+    ChannelMapping,
+    dict_or_channel_mapping_to_channel_mapping,
+)
+from .audio import (
+    SimpleAudioObject,
+    NestedAudioObject,
+    AudioObjectWithDecibel,
+    AudioHost,
+)
 from .io import (
     InputProvider,
     OutputProvider,
-    ChannelMapping,
-    dict_or_channel_mapping_to_channel_mapping,
     PyoObjectMixer,
 )
-from .audio import SimpleAudioObject, NestedAudioObject, AudioHost
 from .parameters import Parameter
 from .modules import (
     Module,
