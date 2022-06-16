@@ -84,7 +84,6 @@ def configure_module_block_and_audio_object_to_module_dict(
             {module_name: replication_configuration}
         )
     return walkman.ModuleDict.from_audio_objects_and_module_configuration(
-        audio_host,
         input_provider,
         output_provider,
         module_name_to_replication_configuration_dict,

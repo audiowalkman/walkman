@@ -29,7 +29,6 @@ def override_default_kwargs(method_to_wrap: typing.Callable) -> typing.Callable:
 class Module(walkman.SimpleAudioObject):
     """Interface for an isolated audio process."""
 
-    audio_host: walkman.AudioHost
     input_provider: walkman.InputProvider
     output_provider: walkman.OutputProvider
     auto_stop: bool = True
@@ -307,7 +306,6 @@ class ModuleDict(typing.Dict[ModuleName, typing.Tuple[Module, ...]]):
     @classmethod
     def from_audio_objects_and_module_configuration(
         cls,
-        audio_host: walkman.AudioHost,
         input_provider: walkman.InputProvider,
         output_provider: walkman.OutputProvider,
         module_name_to_replication_configuration_dict: typing.Dict[
@@ -335,13 +333,13 @@ class ModuleDict(typing.Dict[ModuleName, typing.Tuple[Module, ...]]):
                 module_configuration,
             ) in replication_index_to_module_configuration_dict.items():
                 module = module_class(
-                    audio_host, input_provider, output_provider, **module_configuration
+                    input_provider, output_provider, **module_configuration
                 )
                 module_list[replication_index] = module
             module_tuple = tuple(
                 module
                 if module is not None
-                else module_class(audio_host, input_provider, output_provider)
+                else module_class(input_provider, output_provider)
                 for module in module_list
             )
             module_name_to_module_dict.update({module_name: module_tuple})
