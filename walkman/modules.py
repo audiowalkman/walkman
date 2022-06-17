@@ -144,7 +144,14 @@ class Module(walkman.SimpleAudioObject):
 
     @property
     def duration(self) -> float:
-        return 0
+        return (
+            max(
+                parameter.duration
+                for parameter in self.parameter_name_to_parameter_dict.values()
+            )
+            if self.parameter_name_to_parameter_dict
+            else 0
+        )
 
     @property
     def is_playing(self) -> bool:
@@ -182,6 +189,8 @@ class Module(walkman.SimpleAudioObject):
             self.fader.play(dur=duration, delay=delay)
             self._play(duration=duration, delay=delay)
             self._is_playing = True
+            for parameter in self.parameter_name_to_parameter_dict.values():
+                parameter.play(duration, delay)
         return self
 
     def stop(self, wait: float = 0) -> Module:
@@ -189,6 +198,8 @@ class Module(walkman.SimpleAudioObject):
             self.fader.stop(wait)
             self._stop(wait + self.fade_out_duration)
             self._is_playing = False
+        for parameter in self.parameter_name_to_parameter_dict.values():
+            parameter.stop(wait)
         return self
 
     def close(self):
@@ -270,7 +281,6 @@ class ModuleWithDecibelControlledAutoStartStop(ModuleWithDecibel):
         super().play(duration, delay)
         for auto_start_stop_pyo_object in self._auto_start_stop_pyo_object_list:
             auto_start_stop_pyo_object.play(dur=duration, delay=delay)
-
         return self
 
     def stop(self, wait: float = 0) -> Module:
