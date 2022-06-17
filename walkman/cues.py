@@ -26,9 +26,8 @@ class Cue(object):
     def _set_duration(self):
         if self._duration is None:
             duration_list = []
-            for module_name in self.active_module_name_set:
-                for module in self._module_dict[module_name]:
-                    duration_list.append(module.duration)
+            for module in self.active_module_tuple:
+                duration_list.append(module.duration)
             try:
                 duration = max(duration_list)
             except ValueError:
@@ -62,19 +61,15 @@ class Cue(object):
                         module.stop()
 
     @functools.cached_property
-    def active_module_name_set(self) -> typing.Set[str]:
-        return set(
-            module_name
-            for module_name in self.module_name_to_replication_configuration.keys()
-            if module_name in self._module_dict
-        )
-
-    @functools.cached_property
     def active_module_tuple(self) -> typing.Tuple[walkman.Module, ...]:
         active_module_list = []
-        for module_name in self.active_module_name_set:
-            for module in self._module_dict[module_name]:
-                active_module_list.append(module)
+        for (
+            module_name,
+            replication_configuration,
+        ) in self.module_name_to_replication_configuration.items():
+            module_tuple = self._module_dict[module_name]
+            for replication_index in replication_configuration.keys():
+                active_module_list.append(module_tuple[replication_index])
         return tuple(active_module_list)
 
     @functools.cached_property
