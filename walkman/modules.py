@@ -242,19 +242,19 @@ class ModuleWithDecibelControlledAutoStartStop(ModuleWithDecibel):
         # Initialise auto-start / auto-stop triggers, to improve performance
         # of program (if module is so quiet that it can't be heard it
         # should be stopped).
-        self._rising_decibel_tracker = pyo.Thresh(
-            self._decibel_value, self.decibel_threshold, dir=0
-        ).play()
+        self._compare = pyo.Compare(self._decibel_value, self.decibel_threshold, ">")
+
+        self._rising_decibel_tracker = pyo.Thresh(self._compare, 0.5, dir=0).play()
         self._auto_start_trigger = pyo.TrigFunc(
             self._rising_decibel_tracker, self._play
         ).play()
 
-        self._falling_decibel_tracker = pyo.Thresh(
-            self._decibel_value, self.decibel_threshold, dir=1
-        ).play()
+        self._falling_decibel_tracker = pyo.Thresh(self._compare, 0.5, dir=1).play()
         self._auto_stop_trigger = pyo.TrigFunc(
             self._falling_decibel_tracker, self._stop
         ).play()
+
+        self._decibel_threshold_signal = pyo.Sig(self.decibel_threshold)
 
         # XXX: We don't add the trigger and tracker objects
         # to the `internal_pyo_object_list`, because they should always play
@@ -270,8 +270,7 @@ class ModuleWithDecibelControlledAutoStartStop(ModuleWithDecibel):
         super().play(duration, delay)
         for auto_start_stop_pyo_object in self._auto_start_stop_pyo_object_list:
             auto_start_stop_pyo_object.play(dur=duration, delay=delay)
-        if self._decibel_value < self.decibel_threshold:
-            self._stop()
+
         return self
 
     def stop(self, wait: float = 0) -> Module:
