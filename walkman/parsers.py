@@ -199,7 +199,7 @@ def jinja2_file_path_to_backend(jinja2_file_path: str) -> walkman.Backend:
     toml_str = template.render()
     walkman.constants.LOGGER.critical(
         "WALKMAN converted jinja2 template to the following toml file:\n\n{}".format(
-            "\t>>> ".join(str(toml_str).splitlines(True))
+            "\t".join([f"{line_index}: {line}" for line_index, line in enumerate(str(toml_str).splitlines(True))])
         )
     )
     return toml_str_to_backend(toml_str)
