@@ -60,25 +60,18 @@ class AudioHost(object):
         midi: str = "jack",
         sampling_rate: int = 44100,
         buffer_size: int = 256,
-        output_channel_mapping: walkman.ChannelMapping = walkman.ChannelMapping(
-            {0: 0, 1: 1}
-        ),
+        channel_count: int = 2,
     ):
-        self._output_channel_mapping = output_channel_mapping
         self._is_playing = False
         self.server = pyo.Server(
             sr=sampling_rate,
             midi=midi,
-            nchnls=output_channel_mapping.maxima_right_channel,
+            nchnls=channel_count,
             buffersize=buffer_size,
             duplex=1,
             audio=audio,
             jackname=walkman.constants.NAME,
         ).boot()
-
-    @property
-    def output_channel_mapping(self) -> walkman.ChannelMapping:
-        return self._output_channel_mapping
 
     @property
     def is_playing(self) -> bool:

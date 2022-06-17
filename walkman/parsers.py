@@ -9,8 +9,10 @@ import walkman
 CONFIGURE_KEY = "configure"
 CONFIGURE_NAME_KEY = "name"
 CONFIGURE_AUDIO_KEY = "audio"
+CONFIGURE_AUDIO_CHANNEL_COUNT_KEY = "channel_count"
 CONFIGURE_INPUT_KEY = "input"
 CONFIGURE_OUTPUT_KEY = "output"
+CONFIGURE_OUTPUT_CHANNEL_MAPPING_KEY = "channel_mapping"
 CONFIGURE_MODULE_KEY = "module"
 CONFIGURE_MODULE_REPLICATION_COUNT_KEY = "replication_count"
 
@@ -29,6 +31,14 @@ def pop_from_dict(dict_to_pop_from: dict, name: str, fallback_value: typing.Any 
 
 class UnusedSpecificationWarning(Warning):
     pass
+
+
+class OverrideExplicitChannelCountWarning(Warning):
+    def __init__(self, _: str = ""):
+        super().__init__(
+            "WALKMAN overrides explicitly set value "
+            f"of '{CONFIGURE_MODULE_REPLICATION_COUNT_KEY}'"
+        )
 
 
 def warn_not_used_configuration_content(toml_block: dict, block_name: str):
@@ -106,6 +116,15 @@ def configure_block_to_global_state_object_tuple(
     module_block = pop_from_dict(configure_block, CONFIGURE_MODULE_KEY, {})
 
     warn_not_used_configuration_content(configure_block, "configure")
+
+    if CONFIGURE_OUTPUT_CHANNEL_MAPPING_KEY in output_block:
+        output_channel_mapping = output_block[
+            CONFIGURE_OUTPUT_CHANNEL_MAPPING_KEY
+        ] = walkman.ChannelMapping(output_block[CONFIGURE_OUTPUT_CHANNEL_MAPPING_KEY])
+        channel_count = output_channel_mapping.maxima_right_channel
+        if CONFIGURE_AUDIO_CHANNEL_COUNT_KEY in audio_block:
+            warnings.warn("", OverrideExplicitChannelCountWarning)
+        audio_block[CONFIGURE_AUDIO_CHANNEL_COUNT_KEY] = channel_count
 
     audio_host = walkman.AudioHost(**audio_block)
     input_provider = walkman.InputProvider.from_data(**input_block)
