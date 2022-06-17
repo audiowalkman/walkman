@@ -147,7 +147,10 @@ class StopWatch(UIElement):
 
     @property
     def current_time(self) -> float:
-        return time.time() - self._start_time
+        if self.duration > 0:
+            return time.time() - self._start_time
+        else:
+            return 0
 
     @property
     def current_time_formatted(self) -> str:
