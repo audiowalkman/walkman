@@ -11,7 +11,7 @@ import walkman
 
 @dataclasses.dataclass
 class AudioTest(object):
-    output_channel_mapping: walkman.ChannelMapping
+    channel_count: int
     internal_pyo_object_list: typing.List[pyo.PyoObject] = dataclasses.field(
         default_factory=lambda: []
     )
@@ -32,20 +32,16 @@ class AudioTest(object):
 
 @dataclasses.dataclass
 class AudioRotationTest(AudioTest):
-    inner_channel_index: int = 0
     play_duration: float = 1
 
     def __post_init__(self):
-        self.inner_channel_tuple = tuple(sorted(self.output_channel_mapping.keys()))
-        self._channel_index_cycle = itertools.cycle(
-            range(len(self.inner_channel_tuple))
-        )
+        self._channel_index_cycle = itertools.cycle(range(self.channel_count))
         self._decibel = -120
         self.decibel_signal = pyo.SigTo(self._decibel)
         self.decibel_to_amplitude = pyo.DBToA(self.decibel_signal)
         self.fader = pyo.Fader()
         self.noise = pyo.Noise(mul=self.fader * self.decibel_to_amplitude)
-        self.mixer = self.output_channel_mapping.to_mixer()
+        self.mixer = pyo.Mixer(outs=self.channel_count)
         self.mixer.addInput(0, self.noise)
         self.pattern = pyo.Pattern(self._increment, self.play_duration + 0.075)
         self.pattern.stop()
@@ -63,15 +59,12 @@ class AudioRotationTest(AudioTest):
             channel[0].out(output_index)
 
     def _increment(self):
-        self.inner_channel_index = next(self._channel_index_cycle)
+        channel_index = next(self._channel_index_cycle)
         walkman.constants.LOGGER.info(
-            f"{type(self).__name__}: Test channel {self.channel_index}."
+            f"{type(self).__name__}: Test channel {channel_index}."
         )
-        output_channel_tuple = self.output_channel_tuple
-        for output_channel_index in range(
-            self.output_channel_mapping.maxima_right_channel
-        ):
-            amplitude = output_channel_index in output_channel_tuple
+        for output_channel_index in range(self.channel_count):
+            amplitude = output_channel_index == channel_index
             self.mixer.setAmp(0, output_channel_index, amplitude)
         self.fader.play(dur=self.play_duration)
 
@@ -82,14 +75,6 @@ class AudioRotationTest(AudioTest):
     @decibel.setter
     def decibel(self, decibel: float):
         self.decibel_signal.setValue(decibel)
-
-    @property
-    def channel_index(self) -> int:
-        return self.inner_channel_tuple[self.inner_channel_index]
-
-    @property
-    def output_channel_tuple(self) -> typing.Tuple[int]:
-        return self.output_channel_mapping[self.channel_index]
 
     @property
     def pyo_object_list(self) -> typing.List[pyo.PyoObject]:

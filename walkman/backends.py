@@ -19,4 +19,4 @@ class Backend(object):
             walkman.tests.AudioTest
         ] = walkman.tests.AudioRotationTest,
     ) -> walkman.tests.AudioTest:
-        return audio_test_class(self.output_provider.channel_mapping)
+        return audio_test_class(self.audio_host.channel_count)

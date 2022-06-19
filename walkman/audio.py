@@ -20,9 +20,10 @@ class AudioHost(walkman.PlayMixin, walkman.CloseMixin, walkman.DecibelMixin):
         midi: str = "jack",
         sampling_rate: int = 44100,
         buffer_size: int = 1024,
-        channel_count: int = 8,
+        channel_count: int = 2,
         **kwargs,
     ):
+        self.channel_count = channel_count
         self.server = pyo.Server(
             sr=sampling_rate,
             midi=midi,
