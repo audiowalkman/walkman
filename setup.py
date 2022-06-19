@@ -16,7 +16,6 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     author="Levin Eric Zimmermann",
     author_email="levin.eric.zimmermann@posteo.eu",
-    packages=["walkman"],
     setup_requires=[],
     install_requires=[
         # for audio
@@ -29,6 +28,11 @@ setuptools.setup(
         "tomli>=2.0.1, <3.0.0",
         # to parse jinja2 syntax in config files
         "jinja2>=3.1.2, <4.0.0",
+    ],
+    packages=[
+        package
+        for package in setuptools.find_packages(include=["walkman.*"])
+        if package[:5] != "tests"
     ],
     extras_require={"testing": ["nose"]},
     python_requires="==3.8",
