@@ -289,3 +289,47 @@ class MixerTest(walkman.unit_tests.ModuleTestCase):
             pass
 
         return MixerForTest
+
+
+class FilterTest(walkman.unit_tests.ModuleTestCase):
+    def get_module_class(self) -> typing.Type[walkman.Module]:
+        class FilterForTest(
+            walkman.Filter,
+            audio_input=walkman.AutoSetup(walkman.Sine),
+        ):
+            pass
+
+        return FilterForTest
+
+
+class ConvolutionReverbTest(walkman.unit_tests.ModuleTestCase):
+    def get_module_class(self) -> typing.Type[walkman.Module]:
+        class ConvolutionReverbForTest(
+            walkman.ConvolutionReverb,
+            audio_input=walkman.AutoSetup(walkman.Sine),
+        ):
+            pass
+
+        return ConvolutionReverbForTest
+
+    def get_module_instance(
+        self,
+        module_class: typing.Optional[typing.Type[walkman.Module]] = None,
+        **kwargs
+    ) -> walkman.Module:
+        return super().get_module_instance(
+            module_class=module_class,
+            impulse_path="tests/automatic/impulse.wav",
+            **kwargs
+        )
+
+
+class WaveguideReverbTest(walkman.unit_tests.ModuleTestCase):
+    def get_module_class(self) -> typing.Type[walkman.Module]:
+        class WaveguideReverbForTest(
+            walkman.WaveguideReverb,
+            audio_input=walkman.AutoSetup(walkman.Sine),
+        ):
+            pass
+
+        return WaveguideReverbForTest

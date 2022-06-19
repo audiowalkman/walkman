@@ -19,6 +19,9 @@ __all__ = (
     "Sine",
     "Amplification",
     "Mixer",
+    "Filter",
+    "ConvolutionReverb",
+    "WaveguideReverb",
 )
 
 
@@ -394,3 +397,107 @@ class Mixer(
                     self.input_mixer.setAmp(
                         mixer_index, module_output_channel_index, amplitude
                     )
+
+
+class Filter(
+    ModuleWithDecibel,
+    frequency=base.AutoSetup(
+        Parameter, module_kwargs={"default_dict": {"value": 1000}}
+    ),
+    q=base.AutoSetup(Parameter, module_kwargs={"default_dict": {"value": 5}}),
+    audio_input=base.Catch(walkman.constants.EMPTY_MODULE_INSTANCE_NAME),
+):
+    FILTER_TYPE_TO_INTERNAL_FILTER_TYPE = {
+        "lowpass": 0,
+        "highpass": 1,
+        "bandpass": 2,
+        "bandstop": 3,
+        "allpass": 4,
+    }
+
+    def _setup_pyo_object(self):
+        super()._setup_pyo_object()
+        self.audio_filter = pyo.Biquadx(
+            self.audio_input.pyo_object,
+            mul=self.amplitude_signal_to,
+            freq=self.frequency.pyo_object,
+            q=self.q.pyo_object,
+        )
+        self.internal_pyo_object_list.append(self.audio_filter)
+
+    def _initialise(
+        self,
+        stages: int = 4,
+        filter_type: str = "highpass",
+        **_,
+    ):
+        try:
+            internal_filter_type = self.FILTER_TYPE_TO_INTERNAL_FILTER_TYPE[filter_type]
+        except KeyError:
+            default_filter_type = "lowpass"
+            internal_filter_type = self.FILTER_TYPE_TO_INTERNAL_FILTER_TYPE[
+                default_filter_type
+            ]
+            warnings.warn(
+                "Found undefined filter type '{filter_type}'."
+                "Filter type has been set to '{default_filter_type}'."
+            )
+
+        self.audio_filter.setType(internal_filter_type)
+        self.audio_filter.setStages(stages)
+
+    @functools.cached_property
+    def _pyo_object(self) -> pyo.PyoObject:
+        return self.audio_filter
+
+
+class ConvolutionReverb(
+    ModuleWithDecibel,
+    audio_input=base.Catch(walkman.constants.EMPTY_MODULE_INSTANCE_NAME),
+    balance=base.AutoSetup(Parameter, module_kwargs={"default_dict": {"value": 1}}),
+):
+    def __init__(self, *, impulse_path: str, sample_size: int = 1024, **kwargs):
+        super().__init__(**kwargs)
+        self.impulse_path = impulse_path
+        self.sample_size = sample_size
+
+    def _setup_pyo_object(self):
+        super()._setup_pyo_object()
+
+        self.convolution_reverb = pyo.CvlVerb(
+            self.audio_input.pyo_object,
+            self.impulse_path,
+            size=self.sample_size,
+            mul=self.amplitude_signal_to,
+            bal=self.balance.pyo_object,
+        ).stop()
+
+        self.internal_pyo_object_list.append(self.convolution_reverb)
+
+    @functools.cached_property
+    def _pyo_object(self) -> pyo.PyoObject:
+        return self.convolution_reverb
+
+
+class WaveguideReverb(
+    ModuleWithDecibel,
+    audio_input=base.Catch(walkman.constants.EMPTY_MODULE_INSTANCE_NAME),
+    balance=base.AutoSetup(Parameter, module_kwargs={"default_dict": {"value": 1}}),
+    cutoff_frequency=base.AutoSetup(
+        Parameter, module_kwargs={"default_dict": {"value": 6000}}
+    ),
+    feedback=base.AutoSetup(Parameter, module_kwargs={"default_dict": {"value": 0.6}}),
+):
+    def _setup_pyo_object(self):
+        super()._setup_pyo_object()
+        self.waveguide_reverb = pyo.WGVerb(
+            self.audio_input.pyo_object,
+            feedback=self.feedback.pyo_object,
+            mul=self.amplitude_signal_to,
+            bal=self.balance.pyo_object,
+        ).stop()
+        self.internal_pyo_object_list.append(self.waveguide_reverb)
+
+    @functools.cached_property
+    def _pyo_object(self) -> pyo.PyoObject:
+        return self.waveguide_reverb
