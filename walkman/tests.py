@@ -10,7 +10,7 @@ import walkman
 
 
 @dataclasses.dataclass
-class AudioTest(walkman.NestedAudioObject, walkman.AudioObjectWithDecibel):
+class AudioTest(object):
     output_channel_mapping: walkman.ChannelMapping
     internal_pyo_object_list: typing.List[pyo.PyoObject] = dataclasses.field(
         default_factory=lambda: []

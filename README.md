@@ -40,26 +40,9 @@ name = "my composition"
 [configure.audio]
 sampling_rate = 44100
 
-[configure.input]
-midi_control_list = [
-    # [midi control, midi channel]
-    [0, 1],
-    [1, 1]
-]
 
-[configure.input.channel_mapping]
-# physical input -> input index
-1 = 0
-2 = 1
-3 = [0, 1]
-
-[configure.output.channel_mapping]
-# output index -> physical output
-0 = 1
-1 = 2
-2 = 4
-3 = [5, 6]
-
+[configure.module.audio_input.0]
+input_channel_index = 1
 
 [configure.module.sound_file_player]
 replication_count = 1

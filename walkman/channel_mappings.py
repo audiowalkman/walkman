@@ -3,6 +3,9 @@ import typing
 import pyo
 
 
+__all__ = ("ChannelMapping", "dict_or_channel_mapping_to_channel_mapping")
+
+
 class ChannelMapping(typing.Dict[int, typing.Tuple[int, ...]]):
     """Map audio channels to other audio channels.
 

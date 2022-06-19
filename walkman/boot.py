@@ -3,6 +3,9 @@
 import walkman
 
 
+__all__ = ("start_loop_from_jinja2_file_path", "start_loop_from_toml_str")
+
+
 def start_loop(
     backend: walkman.Backend,
     headless: bool = False,
@@ -23,5 +26,3 @@ def start_loop_from_jinja2_file_path(jinja2_file_path: str, **kwargs):
 def start_loop_from_toml_str(toml_file_path: str, **kwargs):
     backend = walkman.parsers.toml_str_to_backend(toml_file_path)
     start_loop(backend, **kwargs)
-
-

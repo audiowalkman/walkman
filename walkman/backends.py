@@ -10,9 +10,7 @@ class Backend(object):
 
     name: str
     audio_host: walkman.AudioHost
-    input_provider: walkman.InputProvider
-    output_provider: walkman.OutputProvider
-    module_dict: walkman.ModuleDict
+    module_container: walkman.ModuleContainer
     cue_manager: walkman.CueManager
 
     def get_audio_test(

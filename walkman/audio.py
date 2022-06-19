@@ -1,57 +1,17 @@
 from __future__ import annotations
-
-import abc
-import functools
-import uuid
+from walkman.utilities import decibel_to_amplitude_ratio
 
 import pyo
 
 import walkman
 
-
-class AudioObject(abc.ABC):
-    @classmethod
-    def get_name(cls) -> str:
-        # class name
-        return walkman.utilities.camel_case_to_snake_case(cls.__name__)
-
-    @functools.cached_property
-    def name(self) -> str:
-        # unique instance name
-        return f"{self.get_name()}-{uuid.uuid4()}"
-
-    def close(self):
-        """Method is called when walkman is closed"""
-        pass
+__all__ = ("AudioHost",)
 
 
-class SimpleAudioObject(AudioObject):
-    @abc.abstractproperty
-    def pyo_object(self) -> pyo.PyoObject:
-        ...
+class AudioHost(walkman.PlayMixin, walkman.CloseMixin, walkman.DecibelMixin):
+    """Wrapper for pyo.Server.
 
-
-class NestedAudioObject(AudioObject):
-    @abc.abstractproperty
-    def pyo_object_list(self) -> list[pyo.PyoObject]:
-        ...
-
-
-class AudioObjectWithDecibel(AudioObject):
-    @abc.abstractproperty
-    def decibel(self) -> float:
-        ...
-
-    @decibel.setter
-    @abc.abstractproperty
-    def decibel(self, decibel: float):
-        ...
-
-
-class AudioHost(object):
-    """Wrapper for pyo.Server and pyo.Mixer.
-
-    Simplifies server API and adds volumes controls.
+    Simplifies server API.
     """
 
     def __init__(
@@ -59,10 +19,10 @@ class AudioHost(object):
         audio: str = "jack",
         midi: str = "jack",
         sampling_rate: int = 44100,
-        buffer_size: int = 256,
-        channel_count: int = 2,
+        buffer_size: int = 1024,
+        channel_count: int = 8,
+        **kwargs,
     ):
-        self._is_playing = False
         self.server = pyo.Server(
             sr=sampling_rate,
             midi=midi,
@@ -70,21 +30,26 @@ class AudioHost(object):
             buffersize=buffer_size,
             duplex=1,
             audio=audio,
-            jackname=walkman.constants.NAME,
+            jackname=f"{walkman.constants.NAME}_{channel_count}",
+            **kwargs,
         ).boot()
+        self.decibel = -12
 
-    @property
-    def is_playing(self) -> bool:
-        return self._is_playing
-
-    def start(self):
+    def _play(self, **_):
         self.server.start()
-        self._is_playing = True
 
-    def stop(self):
+    def _stop(self, wait: float = 0):
         self.server.stop()
-        self._is_playing = False
 
     def close(self):
         self.stop()
         del self.server
+
+    @property
+    def decibel(self) -> float:
+        return self._decibel
+
+    @decibel.setter
+    def decibel(self, decibel: float):
+        self._decibel = decibel
+        self.server.setAmp(float(1 * (10 ** (decibel / 20))))

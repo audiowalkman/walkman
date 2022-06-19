@@ -194,9 +194,6 @@ class StopWatch(UIElement):
         self.update()
 
 
-class Volume(UIElement):
-    pass
-
 
 class Button(SimpleUIElement):
     def __init__(self, *args, **kwargs):
@@ -236,7 +233,7 @@ class JumpToTimeButton(Button):
         seconds = value_dict[self.jump_to_time_input_seconds_key]
         time = (int(minutes) * 60) + float(seconds)
         if time <= (cue_duration := self.backend.cue_manager.current_cue.duration):
-            for module in self.backend.module_dict.module_tuple:
+            for module in self.backend.module_container.module_tuple:
                 module.jump_to(time)
             self.stop_watch.set_to(time)
             if not self.backend.audio_host.is_playing:
@@ -496,13 +493,11 @@ class VolumeSlider(Slider):
     def __init__(
         self,
         *args,
-        default_value: typing.Optional[float] = None,
+        default_value: typing.Optional[float] = -12,
         key_suffix: str = "",
-        volume_range: typing.Tuple[float, float] = (-120, 0),
+        volume_range: typing.Tuple[float, float] = (-120, 12),
         resolution: float = 0.25,
-        audio_object_with_decibel: typing.Optional[
-            walkman.AudioObjectWithDecibel
-        ] = None,
+        audio_object_with_decibel: typing.Optional[walkman.DecibelMixin] = None,
         orientation: str = "horizontal",
         tooltip: typing.Optional[str] = None,
         **kwargs,
@@ -655,7 +650,7 @@ class CueControl(NestedUIElement):
         self.volume_slider = VolumeSlider(
             backend,
             key_suffix="master",
-            audio_object_with_decibel=backend.output_provider,
+            audio_object_with_decibel=backend.audio_host,
             tooltip="Set volume of master output",
         )
 
@@ -847,12 +842,12 @@ class GUI(NestedWindow):
 
     def before_loop(self):
         super().before_loop()
-        self.backend.audio_host.start()
+        self.backend.audio_host.play()
 
     def after_loop(self):
         super().after_loop()
         self.backend.cue_manager.current_cue.stop()
-        self.backend.module_dict.close()
+        self.backend.module_container.close()
         self.backend.audio_host.close()
 
 

@@ -2,11 +2,11 @@
 
 VIRTUALENV_PATH=".venv"
 VIRTUALENV_BIN_PATH="$VIRTUALENV_PATH/bin"
-PIP_PATH="$VIRTUALENV_BIN_PATH/pip3"
-BUILDOUT_BOOTSTRAP_PATH="$VIRTUALENV_BIN_PATH/buildout"
+BUILDOUT_BIN_PATH="bin"
+TEST_SCRIPT_PATH="automatic_test.cfg"
 
 python3 -m venv $VIRTUALENV_PATH
-$PIP_PATH install zc.buildout
-$BUILDOUT_BOOTSTRAP_PATH -c automatic_test.cfg bootstrap 
-bin/buildout -c automatic_test.cfg
-bin/run-tests
+$VIRTUALENV_BIN_PATH/pip3 install zc.buildout
+$VIRTUALENV_BIN_PATH/buildout -c $TEST_SCRIPT_PATH bootstrap 
+$BUILDOUT_BIN_PATH/buildout -c $TEST_SCRIPT_PATH
+$BUILDOUT_BIN_PATH/run-tests
