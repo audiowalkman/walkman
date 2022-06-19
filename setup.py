@@ -30,9 +30,7 @@ setuptools.setup(
         "jinja2>=3.1.2, <4.0.0",
     ],
     packages=[
-        package
-        for package in setuptools.find_packages(include=["walkman.*"])
-        if package[:5] != "tests"
+        package for package in setuptools.find_packages() if package[:5] != "tests"
     ],
     extras_require={"testing": ["nose"]},
     python_requires="==3.8",
