@@ -11,7 +11,6 @@ CONFIGURE_NAME_KEY = "name"
 CONFIGURE_AUDIO_KEY = "audio"
 CONFIGURE_AUDIO_CHANNEL_COUNT_KEY = "channel_count"
 CONFIGURE_MODULE_KEY = "module"
-CONFIGURE_MODULE_REPLICATION_COUNT_KEY = "replication_count"
 
 CUE_KEY = "cue"
 
@@ -28,14 +27,6 @@ def pop_from_dict(dict_to_pop_from: dict, name: str, fallback_value: typing.Any 
 
 class UnusedSpecificationWarning(Warning):
     pass
-
-
-class OverrideExplicitChannelCountWarning(Warning):
-    def __init__(self, _: str = ""):
-        super().__init__(
-            "WALKMAN overrides explicitly set value "
-            f"of '{CONFIGURE_MODULE_REPLICATION_COUNT_KEY}'"
-        )
 
 
 def warn_not_used_configuration_content(toml_block: dict, block_name: str):
@@ -67,20 +58,11 @@ def configure_module_block_and_audio_object_to_module_container(
 ) -> walkman.ModuleContainer:
     module_name_to_replication_configuration_dict = {}
     for module_name, replication_configuration_block in configure_module_block.items():
-        replication_count = pop_from_dict(
-            replication_configuration_block,
-            CONFIGURE_MODULE_REPLICATION_COUNT_KEY,
-            None,
-        )
         replication_configuration = {}
         for replication_key, configuration in replication_configuration_block.items():
             add_replication_instance(
                 replication_key, module_name, replication_configuration, configuration
             )
-        if replication_count is not None:
-            for replication_key in range(int(replication_count)):
-                if replication_key not in replication_configuration:
-                    replication_configuration.update({replication_key: {}})
         module_name_to_replication_configuration_dict.update(
             {module_name: replication_configuration}
         )
@@ -91,11 +73,7 @@ def configure_module_block_and_audio_object_to_module_container(
 
 def configure_block_to_global_state_object_tuple(
     configure_block: dict,
-) -> typing.Tuple[
-    str,
-    walkman.AudioHost,
-    walkman.ModuleContainer,
-]:
+) -> typing.Tuple[str, walkman.AudioHost, walkman.ModuleContainer]:
     name = pop_from_dict(configure_block, CONFIGURE_NAME_KEY, "Project")
     audio_block = pop_from_dict(configure_block, CONFIGURE_AUDIO_KEY, {})
     module_block = pop_from_dict(configure_block, CONFIGURE_MODULE_KEY, {})
@@ -103,7 +81,9 @@ def configure_block_to_global_state_object_tuple(
     warn_not_used_configuration_content(configure_block, "configure")
 
     audio_host = walkman.AudioHost(**audio_block)
-    module_container = configure_module_block_and_audio_object_to_module_container(module_block)
+    module_container = configure_module_block_and_audio_object_to_module_container(
+        module_block
+    )
 
     return (name, audio_host, module_container)
 
