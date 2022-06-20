@@ -237,7 +237,9 @@ MixerInfo = typing.Tuple[MixerIndex, ...]
 class Mixer(
     ModuleWithDecibel,
     **{
-        f"audio_input_{index}": base.Catch(walkman.constants.EMPTY_MODULE_INSTANCE_NAME)
+        f"audio_input_{index}": base.Catch(
+            walkman.constants.EMPTY_MODULE_INSTANCE_NAME, relevance=False
+        )
         for index in range(100)
     },
 ):
@@ -415,22 +417,9 @@ class Filter(
         "allpass": 4,
     }
 
-    def _setup_pyo_object(self):
-        super()._setup_pyo_object()
-        self.audio_filter = pyo.Biquadx(
-            self.audio_input.pyo_object,
-            mul=self.amplitude_signal_to,
-            freq=self.frequency.pyo_object,
-            q=self.q.pyo_object,
-        )
-        self.internal_pyo_object_list.append(self.audio_filter)
-
-    def _initialise(
-        self,
-        stages: int = 4,
-        filter_type: str = "highpass",
-        **_,
-    ):
+    def __init__(self, stages: int = 4, filter_type: str = "lowpass", **kwargs):
+        super().__init__(**kwargs)
+        self.stages = stages
         try:
             internal_filter_type = self.FILTER_TYPE_TO_INTERNAL_FILTER_TYPE[filter_type]
         except KeyError:
@@ -442,9 +431,19 @@ class Filter(
                 "Found undefined filter type '{filter_type}'."
                 "Filter type has been set to '{default_filter_type}'."
             )
+        self.internal_filter_type = internal_filter_type
 
-        self.audio_filter.setType(internal_filter_type)
-        self.audio_filter.setStages(stages)
+    def _setup_pyo_object(self):
+        super()._setup_pyo_object()
+        self.audio_filter = pyo.Biquadx(
+            self.audio_input.pyo_object,
+            mul=self.amplitude_signal_to,
+            freq=self.frequency.pyo_object,
+            q=self.q.pyo_object,
+            stages=self.stages,
+            type=self.internal_filter_type,
+        )
+        self.internal_pyo_object_list.append(self.audio_filter)
 
     @functools.cached_property
     def _pyo_object(self) -> pyo.PyoObject:
