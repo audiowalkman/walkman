@@ -29,11 +29,29 @@ def override_default_kwargs(method_to_wrap: typing.Callable) -> typing.Callable:
 class ModuleInput(abc.ABC):
     """Allocate an Module object as an input of another Module"""
 
-    def __init__(self, relevance: bool = True):
+    def __init__(
+        self,
+        relevance: bool = True,
+    ):
         self.relevance = relevance
 
+    def get_replication_key(
+        self,
+        parent: typing.Optional[Module] = None,
+        module_input_name: str = "",
+    ) -> str:
+        if parent:
+            return f"child.{str(parent)}.{module_input_name}"
+        else:
+            return ""
+
     @abc.abstractmethod
-    def __call__(self, module_container: ModuleContainer) -> Module:
+    def __call__(
+        self,
+        module_container: ModuleContainer,
+        parent: typing.Optional[Module] = None,
+        module_input_name: str = "",
+    ) -> Module:
         ...
 
 
@@ -42,7 +60,12 @@ class Catch(ModuleInput):
         super().__init__(*args, **kwargs)
         self.module_instance_name = module_instance_name
 
-    def __call__(self, module_container: ModuleContainer) -> Module:
+    def __call__(
+        self,
+        module_container: ModuleContainer,
+        parent: typing.Optional[Module] = None,
+        module_input_name: str = "",
+    ) -> Module:
         try:
             return module_container.get_module_by_name(self.module_instance_name)
         except (KeyError, InvalidModuleInstanceNameError):
@@ -66,8 +89,18 @@ class AutoSetup(ModuleInput):
         self.module_class = module_class
         self.module_kwargs = module_kwargs
 
-    def __call__(self, module_container: ModuleContainer) -> Module:
-        module = self.module_class(**self.module_kwargs)
+    def __call__(
+        self,
+        module_container: ModuleContainer,
+        parent: typing.Optional[Module] = None,
+        module_input_name: str = "",
+    ) -> Module:
+        module_kwargs = dict(self.module_kwargs)
+        if not "replication_key" in module_kwargs:
+            module_kwargs["replication_key"] = self.get_replication_key(
+                parent, module_input_name
+            )
+        module = self.module_class(**module_kwargs)
         module_instance_dict = {id(module): module}
         module_name = module.get_class_name()
         try:
@@ -86,6 +119,7 @@ class Module(
 ):
     def __init__(
         self,
+        replication_key: str = "",
         send_to_physical_output: bool = False,
         auto_stop: bool = True,
         fade_in_duration: float = 0.1,
@@ -93,6 +127,7 @@ class Module(
         module_input_dict: typing.Dict[str, ModuleInput] = dict([]),
         default_dict: typing.Dict[str, typing.Any] = dict([]),
     ):
+        self.replication_key = replication_key
         self.send_to_physical_output = send_to_physical_output
         self.auto_stop = auto_stop
         self.fade_in_duration = fade_in_duration
@@ -144,6 +179,12 @@ class Module(
         # has to be manually added again.
         return walkman.NamedMixin.__hash__(self)
 
+    def __str__(self) -> str:
+        return f"{self.get_class_name()}.{self.replication_key}"
+
+    def __repr__(self) -> str:
+        return str(self)
+
     # ################## ABSTRACT PROPERTIES ################## #
 
     @abc.abstractproperty
@@ -194,7 +235,9 @@ class Module(
     def assign_module_inputs(self, module_container: ModuleContainer):
         if not self.has_assigned_inputs:
             for module_input_name, module_input in self.module_input_dict.items():
-                module = module_input(module_container)
+                module = module_input(
+                    module_container, parent=self, module_input_name=module_input_name
+                )
                 module.output_module_set.add(self)
                 setattr(self, module_input_name, module)
 
@@ -372,7 +415,7 @@ class ModuleContainer(
 ):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if not "empty" in self:
+        if "empty" not in self:
             self.update({"empty": {}})
         self["empty"].update(
             {
@@ -451,7 +494,9 @@ class ModuleContainer(
                 replication_key,
                 module_configuration,
             ) in replication_key_to_module_configuration_dict.items():
-                module = module_class(**module_configuration)
+                module = module_class(
+                    replication_key=replication_key, **module_configuration
+                )
                 module_dict[replication_key] = module
             if module_dict:
                 module_name_to_module_container.update({module_name: module_dict})
