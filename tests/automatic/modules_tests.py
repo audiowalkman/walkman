@@ -333,3 +333,36 @@ class WaveguideReverbTest(walkman.unit_tests.ModuleTestCase):
             pass
 
         return WaveguideReverbForTest
+
+
+class ButterworthHighpassFilterTest(walkman.unit_tests.ModuleTestCase):
+    def get_module_class(self) -> typing.Type[walkman.Module]:
+        class ButterworthHighpassFilterForTest(
+            walkman.ButterworthHighpassFilter,
+            audio_input=walkman.AutoSetup(walkman.Sine),
+        ):
+            pass
+
+        return ButterworthHighpassFilterForTest
+
+
+class ButterworthLowpassFilterTest(walkman.unit_tests.ModuleTestCase):
+    def get_module_class(self) -> typing.Type[walkman.Module]:
+        class ButterworthLowpassFilterForTest(
+            walkman.ButterworthLowpassFilter,
+            audio_input=walkman.AutoSetup(walkman.Sine),
+        ):
+            pass
+
+        return ButterworthLowpassFilterForTest
+
+
+class EqualizerTest(walkman.unit_tests.ModuleTestCase):
+    def get_module_class(self) -> typing.Type[walkman.Module]:
+        class EqualizerForTest(
+            walkman.Equalizer,
+            audio_input=walkman.AutoSetup(walkman.Sine),
+        ):
+            pass
+
+        return EqualizerForTest

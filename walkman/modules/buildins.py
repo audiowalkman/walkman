@@ -22,6 +22,9 @@ __all__ = (
     "Filter",
     "ConvolutionReverb",
     "WaveguideReverb",
+    "ButterworthLowpassFilter",
+    "ButterworthHighpassFilter",
+    "Equalizer",
 )
 
 
@@ -428,8 +431,8 @@ class Filter(
                 default_filter_type
             ]
             warnings.warn(
-                "Found undefined filter type '{filter_type}'."
-                "Filter type has been set to '{default_filter_type}'."
+                f"Found undefined filter type '{filter_type}'."
+                f"Filter type has been set to '{default_filter_type}'."
             )
         self.internal_filter_type = internal_filter_type
 
@@ -500,3 +503,94 @@ class WaveguideReverb(
     @functools.cached_property
     def _pyo_object(self) -> pyo.PyoObject:
         return self.waveguide_reverb
+
+
+class ButterworthLowpassFilter(
+    ModuleWithDecibel,
+    audio_input=base.Catch(walkman.constants.EMPTY_MODULE_INSTANCE_NAME),
+    frequency=base.AutoSetup(
+        Parameter, module_kwargs={"default_dict": {"value": 1000}}
+    ),
+):
+    def _setup_pyo_object(self):
+        super()._setup_pyo_object()
+        self.lowpass_filter = pyo.ButLP(
+            self.audio_input.pyo_object,
+            mul=self.amplitude_signal_to,
+            freq=self.frequency.pyo_object,
+        ).stop()
+        self.internal_pyo_object_list.append(self.lowpass_filter)
+
+    @functools.cached_property
+    def _pyo_object(self) -> pyo.PyoObject:
+        return self.lowpass_filter
+
+
+class ButterworthHighpassFilter(
+    ModuleWithDecibel,
+    audio_input=base.Catch(walkman.constants.EMPTY_MODULE_INSTANCE_NAME),
+    frequency=base.AutoSetup(
+        Parameter, module_kwargs={"default_dict": {"value": 1000}}
+    ),
+):
+    def _setup_pyo_object(self):
+        super()._setup_pyo_object()
+        self.highpass_filter = pyo.ButHP(
+            self.audio_input.pyo_object,
+            mul=self.amplitude_signal_to,
+            freq=self.frequency.pyo_object,
+        ).stop()
+        self.internal_pyo_object_list.append(self.highpass_filter)
+
+    @functools.cached_property
+    def _pyo_object(self) -> pyo.PyoObject:
+        return self.highpass_filter
+
+
+class Equalizer(
+    ModuleWithDecibel,
+    audio_input=base.Catch(walkman.constants.EMPTY_MODULE_INSTANCE_NAME),
+    frequency=base.AutoSetup(
+        Parameter, module_kwargs={"default_dict": {"value": 500}}
+    ),
+    boost=base.AutoSetup(Parameter, module_kwargs={"default_dict": {"value": -3}}),
+):
+    FILTER_TYPE_TO_INTERNAL_FILTER_TYPE = {
+        "peak": 0,
+        "notch": 0,
+        "lowshelf": 1,
+        "highshelf": 2,
+    }
+
+    def __init__(self, filter_type: str = "peak", **kwargs):
+        super().__init__(**kwargs)
+        try:
+            internal_filter_type = self.FILTER_TYPE_TO_INTERNAL_FILTER_TYPE[filter_type]
+        except KeyError:
+            default_filter_type = "peak"
+            warnings.warn(
+                f"Found undefined filter type '{filter_type}'."
+                f"Filter type has been set to '{default_filter_type}'."
+            )
+            internal_filter_type = self.FILTER_TYPE_TO_INTERNAL_FILTER_TYPE[
+                default_filter_type
+            ]
+        self.internal_filter_type = internal_filter_type
+
+    def _setup_pyo_object(self):
+        super()._setup_pyo_object()
+        self.equalizer = pyo.EQ(
+            self.audio_input.pyo_object,
+            mul=self.amplitude_signal_to,
+            freq=self.frequency.pyo_object,
+            boost=self.boost.pyo_object,
+            type=self.internal_filter_type,
+        ).stop()
+        self.internal_pyo_object_list.append(self.equalizer)
+
+    def _initialise(self, q: float = 1, **_):
+        self.equalizer.setQ(q)
+
+    @functools.cached_property
+    def _pyo_object(self) -> pyo.PyoObject:
+        return self.equalizer
