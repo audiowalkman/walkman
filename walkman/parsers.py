@@ -169,7 +169,7 @@ def jinja2_file_path_to_backend(jinja2_file_path: str) -> walkman.Backend:
     environment = jinja2.Environment(loader=jinja2.FileSystemLoader("./"))
     template = environment.get_template(jinja2_file_path)
     toml_str = template.render()
-    walkman.constants.LOGGER.critical(
+    walkman.constants.LOGGER.info(
         "WALKMAN converted jinja2 template to the following toml file:\n\n{}".format(
             "\t".join(
                 [

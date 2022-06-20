@@ -4,8 +4,10 @@ NAME = "walkman"
 """Software name"""
 
 LOGGER = logging.getLogger(f"{NAME}-logger")
-LOGGER.addHandler(logging.StreamHandler())
 """Global logger"""
+
+LOGGER.addHandler(logging.StreamHandler())
+LOGGER.setLevel(logging.INFO)
 
 MODULE_PACKAGE_NAME = "walkman_modules"
 
