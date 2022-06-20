@@ -1,5 +1,4 @@
 from __future__ import annotations
-from walkman.utilities import decibel_to_amplitude_ratio
 
 import pyo
 
@@ -33,8 +32,11 @@ class AudioHost(walkman.PlayMixin, walkman.CloseMixin, walkman.DecibelMixin):
             audio=audio,
             jackname=f"{walkman.constants.NAME}_{channel_count}",
             **kwargs,
-        ).boot()
+        )
+        self.server.setJackAuto(xin=False, xout=False)
+        self.server.boot()
         self.decibel = -12
+
 
     def _play(self, **_):
         self.server.start()
