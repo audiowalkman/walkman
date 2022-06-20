@@ -161,8 +161,8 @@ class ModuleTest(walkman.unit_tests.ModuleTestCase):
         self.assertEqual(
             module_instance.module_input_chain,
             (
-                module_instance.audio_input,
                 module_instance.dummy_input,
+                module_instance.audio_input,
             ),
         )
 
@@ -174,8 +174,8 @@ class ModuleTest(walkman.unit_tests.ModuleTestCase):
             module_instance.module_input_chain,
             (
                 module_instance.dummy_input,
-                module_instance.audio_input.audio_input,
                 module_instance.audio_input.dummy_input,
+                module_instance.audio_input.audio_input,
                 module_instance.audio_input,
             ),
         )
@@ -206,8 +206,8 @@ class ModuleTest(walkman.unit_tests.ModuleTestCase):
         self.assertEqual(
             module_instance.audio_input.module_chain,
             (
-                module_instance.audio_input.audio_input,
                 module_instance.audio_input.dummy_input,
+                module_instance.audio_input.audio_input,
                 module_instance,
             ),
         )
