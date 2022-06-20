@@ -248,10 +248,7 @@ MixerInfo = typing.Tuple[MixerIndex, ...]
 
 
 class Mixer(
-    base.Module,
-    # TODO(Fix bug when setting decibel value)
-    # (maybe this is even a pyo bug, try a minimal example!)
-    # ModuleWithDecibel,
+    ModuleWithDecibel,
     **{
         f"audio_input_{index}": base.Catch(
             walkman.constants.EMPTY_MODULE_INSTANCE_NAME, relevance=False
@@ -281,7 +278,9 @@ class Mixer(
         super()._setup_pyo_object()
 
         self.input_mixer = pyo.Mixer(outs=self.input_channel_count)
-        self.output_mixer = pyo.Mixer(outs=self.output_channel_count)
+        self.output_mixer = pyo.Mixer(
+            outs=self.output_channel_count  # , mul=self.amplitude_signal_to
+        )
 
         for (
             input_channel_index,
@@ -311,43 +310,45 @@ class Mixer(
     def _initialise(
         self, **audio_input_channel_mapping: typing.Dict[str, walkman.ChannelMapping]
     ):
-        # Input has the form: {"audio_input_0": {"channel_mapping": {0: 1}}}.
-        # This is better than {"audio_input_0_channel_mapping": ..}, because
-        # we don't have to process the keys and the UI in the toml file is
-        # more intuitive (
-        #       [mixer.0.audio_input_0.channel_mapping] instead of
-        #       [mixer.0.audio_input_0_channel_mapping]
-        # )
+        audio_input_key_to_channel_mapping_dict = {}
+        for (
+            audio_input_channel_mapping_key,
+            channel_mapping,
+        ) in audio_input_channel_mapping.items():
+            audio_input_key, *_ = audio_input_channel_mapping_key.split(
+                "_channel_mapping"
+            )
+            if audio_input_key in self.module_input_dict.keys():
+                audio_input_key_to_channel_mapping_dict.update(
+                    {audio_input_key: channel_mapping}
+                )
+            else:
+                warnings.warn(
+                    "Found invalid channel mapping "
+                    f"argument '{audio_input_channel_mapping_key}'!"
+                )
+
         for audio_input_key in self.module_input_dict.keys():
             module_instance = getattr(self, audio_input_key)
             if not isinstance(module_instance, Empty):
-                if audio_input_key not in audio_input_channel_mapping:
+                if audio_input_key not in audio_input_key_to_channel_mapping_dict:
                     channel_mapping = {}
                     for channel_index in range(len(module_instance.pyo_object)):
                         output_channel = channel_index % self.input_channel_count
                         channel_mapping.update({channel_index: output_channel})
-                    audio_input_channel_mapping.update(
-                        {audio_input_key: {"channel_mapping": channel_mapping}}
+                    audio_input_key_to_channel_mapping_dict.update(
+                        {audio_input_key: channel_mapping}
                     )
 
         for (
             audio_input_key,
-            audio_input_configuration,
-        ) in audio_input_channel_mapping.items():
-            try:
-                channel_mapping = audio_input_configuration["channel_mapping"]
-            except KeyError:
-                warnings.warn(
-                    "Found useless audio input configuration "
-                    f"'{audio_input_configuration}'. Only valid key"
-                    " is 'channel_mapping' for now."
+            channel_mapping,
+        ) in audio_input_key_to_channel_mapping_dict.items():
+            if isinstance(channel_mapping, (dict, walkman.ChannelMapping)):
+                channel_mapping = walkman.dict_or_channel_mapping_to_channel_mapping(
+                    channel_mapping
                 )
-                continue
-
-            channel_mapping = walkman.dict_or_channel_mapping_to_channel_mapping(
-                channel_mapping
-            )
-            self.activate_channel_mapping(audio_input_key, channel_mapping)
+                self.activate_channel_mapping(audio_input_key, channel_mapping)
 
     def _raise_illegal_audio_object_channel_warning(
         self,
