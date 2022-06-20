@@ -96,6 +96,7 @@ class Parameter(base.Module):
                 self.exponential_envelope,
             ]
         )
+        self.portamento = pyo.Port(self.selector)
 
         self.ENVELOPE_TYPE_TO_ENVELOPE = {
             "linear": self.linear_envelope,
@@ -108,6 +109,7 @@ class Parameter(base.Module):
                 self.linear_envelope,
                 self.exponential_envelope,
                 self.selector,
+                self.portamento,
             ]
         )
 
@@ -118,7 +120,7 @@ class Parameter(base.Module):
 
     @property
     def _pyo_object(self) -> pyo.PyoObject:
-        return self.selector
+        return self.portamento
 
     @property
     def duration(self) -> float:
@@ -128,7 +130,11 @@ class Parameter(base.Module):
         self,
         value: typing.Union[float, typing.List[typing.List[float]]] = 0,
         envelope_type: str = DEFAULT_ENVELOPE_TYPE,
+        rise_time: float = 0.15,
+        fall_time: float = 0.15,
     ):
+        self.portamento.setRiseTime(rise_time)
+        self.portamento.setFallTime(fall_time)
         selector_voice = None
         envelope_list = None
         if isinstance(value, list):
