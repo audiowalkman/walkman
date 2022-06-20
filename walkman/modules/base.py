@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import abc
 import copy
-import dataclasses
 import functools
 import importlib
 import inspect
@@ -78,7 +77,6 @@ class AutoSetup(ModuleInput):
         return module
 
 
-@dataclasses.dataclass()
 class Module(
     walkman.PlayMixin,
     walkman.JumpToMixin,
@@ -86,22 +84,23 @@ class Module(
     walkman.CloseMixin,
     walkman.PyoObjectMixin,
 ):
-    send_to_physical_output: bool = False
-    auto_stop: bool = True
-    fade_in_duration: float = 0.1
-    fade_out_duration: float = 0.2
-    output_module_set: typing.Set[Module] = dataclasses.field(
-        default_factory=lambda: set([])
-    )
-    module_input_dict: typing.Dict[str, ModuleInput] = dataclasses.field(
-        default_factory=lambda: {}
-    )
-    default_dict: typing.Dict[str, typing.Any] = dataclasses.field(
-        default_factory=lambda: {}
-    )
-    internal_pyo_object_list: typing.List[pyo.PyoObject] = dataclasses.field(
-        default_factory=lambda: []
-    )
+    def __init__(
+        self,
+        send_to_physical_output: bool = False,
+        auto_stop: bool = True,
+        fade_in_duration: float = 0.1,
+        fade_out_duration: float = 0.2,
+        module_input_dict: typing.Dict[str, ModuleInput] = dict([]),
+        default_dict: typing.Dict[str, typing.Any] = dict([]),
+    ):
+        self.send_to_physical_output = send_to_physical_output
+        self.auto_stop = auto_stop
+        self.fade_in_duration = fade_in_duration
+        self.fade_out_duration = fade_out_duration
+        self.output_module_set = set([])
+        self.module_input_dict = module_input_dict
+        self.default_dict = default_dict
+        self.internal_pyo_object_list = []
 
     def __init_subclass__(cls, **module_input_dict: ModuleInput):
         try:
@@ -182,7 +181,8 @@ class Module(
         # the wait parameter wouldn't work.
         self.fader_stopper = pyo.Trig().stop()
         self.fader_stopper_function = pyo.TrigFunc(
-            input=self.fader_stopper, function=self.fader.stop
+            input=self.fader_stopper,
+            function=lambda: self.fader.stop() if not self.is_playing else None,
         ).play()
 
     # ################## PUBLIC METHODS      ################## #
@@ -302,7 +302,9 @@ class Module(
         for module_input_name in self.module_input_dict.keys():
             input_module = getattr(self, module_input_name)
             input_module_list.append(input_module)
-            input_module_list.extend(input_module.module_input_chain)
+            for module_instance in reversed(input_module.module_input_chain):
+                if module_instance not in input_module_list:
+                    input_module_list.append(module_instance)
         return tuple(reversed(input_module_list))
 
     @functools.cached_property
@@ -315,7 +317,9 @@ class Module(
                 input_module = getattr(self, module_input_name)
                 if input_module not in input_module_list:
                     input_module_list.append(input_module)
-                for module_instance in input_module.relevant_module_input_chain:
+                for module_instance in reversed(
+                    input_module.relevant_module_input_chain
+                ):
                     if module_instance not in input_module_list:
                         input_module_list.append(module_instance)
         return tuple(reversed(input_module_list))
