@@ -191,6 +191,10 @@ class MidiControlInput(base.Module):
         )
         self.internal_pyo_object_list.append(self.midi_input)
 
+    def _initialise(self, minima: float = 0, maxima: float = 1, **_):
+        self.midi_input.setMinScale(minima)
+        self.midi_input.setMaxScale(maxima)
+
     @property
     def _pyo_object(self) -> pyo.PyoObject:
         return self.midi_input
@@ -550,9 +554,7 @@ class ButterworthHighpassFilter(
 class Equalizer(
     ModuleWithDecibel,
     audio_input=base.Catch(walkman.constants.EMPTY_MODULE_INSTANCE_NAME),
-    frequency=base.AutoSetup(
-        Parameter, module_kwargs={"default_dict": {"value": 500}}
-    ),
+    frequency=base.AutoSetup(Parameter, module_kwargs={"default_dict": {"value": 500}}),
     boost=base.AutoSetup(Parameter, module_kwargs={"default_dict": {"value": -3}}),
 ):
     FILTER_TYPE_TO_INTERNAL_FILTER_TYPE = {
