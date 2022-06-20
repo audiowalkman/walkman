@@ -41,7 +41,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
         self,
         module_dict: typing.Dict[str, walkman.Module],
         replication_configuration: typing.Dict[int, typing.Dict[str, typing.Any]],
-    ):
+    ) -> typing.Tuple[walkman.Module, ...]:
         initialised_module_list = []
         for (
             module_replication_key,
@@ -62,11 +62,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
                     if initialise_kwargs is False:
                         module.stop()
 
-        # Finally initialise all modules which didn't receive any
-        # explicit settings.
-        for module_instance in self.active_module_tuple:
-            if module_instance not in initialised_module_list:
-                module_instance.initialise()
+        return tuple(initialised_module_list)
 
     def _play(self, duration: float = 0, delay: float = 0):
         for module in self.active_module_tuple:
@@ -182,6 +178,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
         return self._module_name_to_replication_configuration
 
     def activate(self):
+        initialised_module_list = []
         for (
             module_name,
             replication_configuration,
@@ -191,9 +188,24 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
             except KeyError:
                 warnings.warn(f"Found invalid module_name '{module_name}'!")
             else:
-                self._initialise_module_tuple(module_dict, replication_configuration)
+                initialised_module_list.extend(
+                    self._initialise_module_tuple(
+                        module_dict, replication_configuration
+                    )
+                )
 
         self._set_duration()
+
+        # Finally initialise all modules which didn't receive any
+        # explicit settings.
+        # XXX: We have to put parameters after other modules, to ensure
+        # syntactic sugar is effective.
+        for module_instance in sorted(
+            self.active_module_tuple,
+            key=lambda module: isinstance(module, walkman.Parameter),
+        ):
+            if module_instance not in initialised_module_list:
+                initialised_module_list.extend(module_instance.initialise())
 
     def deactivate(
         self, module_to_keep_playing_tuple: typing.Tuple[walkman.Module, ...]
