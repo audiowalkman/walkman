@@ -153,6 +153,12 @@ class Parameter(base.Module):
         self.selector.setVoice(selector_voice)
         self.time = 0
 
+        # XXX: When switching playing cues the 'play' method
+        # won't be called. But we have to ensure that the envelopes
+        # are running once we start a new cue.
+        if self.is_playing:
+            self._play()
+
 
 class ModuleWithDecibel(base.Module, decibel=base.AutoSetup(Parameter)):
     def _setup_pyo_object(self):
@@ -242,7 +248,10 @@ MixerInfo = typing.Tuple[MixerIndex, ...]
 
 
 class Mixer(
-    ModuleWithDecibel,
+    base.Module,
+    # TODO(Fix bug when setting decibel value)
+    # (maybe this is even a pyo bug, try a minimal example!)
+    # ModuleWithDecibel,
     **{
         f"audio_input_{index}": base.Catch(
             walkman.constants.EMPTY_MODULE_INSTANCE_NAME, relevance=False
@@ -272,9 +281,7 @@ class Mixer(
         super()._setup_pyo_object()
 
         self.input_mixer = pyo.Mixer(outs=self.input_channel_count)
-        self.output_mixer = pyo.Mixer(
-            outs=self.output_channel_count, mul=self.amplitude_signal_to
-        )
+        self.output_mixer = pyo.Mixer(outs=self.output_channel_count)
 
         for (
             input_channel_index,
