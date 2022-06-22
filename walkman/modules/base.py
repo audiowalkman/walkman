@@ -540,8 +540,8 @@ class ModuleContainer(
             if module_dict:
                 module_name_to_module_container.update({module_name: module_dict})
 
-            for module_name in module_name_to_replication_configuration_dict:
-                warnings.warn(UndefinedModuleWarning(module_name))
+        for module_name in module_name_to_replication_configuration_dict:
+            warnings.warn(UndefinedModuleWarning(module_name))
 
         return cls(module_name_to_module_container)
 
