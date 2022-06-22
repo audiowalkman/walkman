@@ -130,8 +130,8 @@ class Parameter(base.Module):
         self,
         value: typing.Union[float, typing.List[typing.List[float]]] = 0,
         envelope_type: str = DEFAULT_ENVELOPE_TYPE,
-        rise_time: float = 0.15,
-        fall_time: float = 0.15,
+        rise_time: float = 0.001,
+        fall_time: float = 0.001,
     ):
         self.portamento.setRiseTime(rise_time)
         self.portamento.setFallTime(fall_time)
