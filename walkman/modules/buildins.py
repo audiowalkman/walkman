@@ -11,6 +11,7 @@ import walkman
 from . import base
 
 __all__ = (
+    "ModuleWithUneffectiveStop",
     "Empty",
     "Parameter",
     "AudioInput",
@@ -26,6 +27,14 @@ __all__ = (
     "ButterworthHighpassFilter",
     "Equalizer",
 )
+
+
+class ModuleWithUneffectiveStop(base.Module):
+    def _stop(self, _: float = 0):
+        ...
+
+    def stop(self, _: float = 0) -> ModuleWithUneffectiveStop:
+        return self
 
 
 class Empty(base.Module):
@@ -190,7 +199,7 @@ class AudioInput(ModuleWithDecibel):
         return self.denorm
 
 
-class MidiControlInput(base.Module):
+class MidiControlInput(ModuleWithUneffectiveStop):
     def __init__(self, midi_control_number: int = 0, midi_channel: int = 0, **kwargs):
         super().__init__(**kwargs)
         self.midi_control_number = midi_control_number
