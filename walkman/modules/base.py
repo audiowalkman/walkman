@@ -416,6 +416,14 @@ ReplicationKey = str
 ModuleNameToModuleClassDict = typing.Dict[str, typing.Type[Module]]
 
 
+class UndefinedModuleWarning(Warning):
+    def __init__(self, undefined_module_name: str):
+        super().__init__(
+            f"Found undefined module '{undefined_module_name}'. "
+            "WALKMAN ignored given module configurations."
+        )
+
+
 class ModuleContainer(
     typing.Dict[ModuleName, typing.Dict[ReplicationKey, Module]], walkman.CloseMixin
 ):
@@ -494,7 +502,9 @@ class ModuleContainer(
                     module_name_to_replication_configuration_dict[module_name]
                 )
             except KeyError:
-                replication_key_to_module_configuration_dict = {}
+                continue
+            # For debugging (see below)
+            del module_name_to_replication_configuration_dict[module_name]
             module_dict = {}
             for (
                 replication_key,
@@ -506,6 +516,10 @@ class ModuleContainer(
                 module_dict[replication_key] = module
             if module_dict:
                 module_name_to_module_container.update({module_name: module_dict})
+
+            for module_name in module_name_to_replication_configuration_dict:
+                warnings.warn(UndefinedModuleWarning(module_name))
+
         return cls(module_name_to_module_container)
 
     def close(self):
