@@ -424,13 +424,26 @@ class UndefinedModuleWarning(Warning):
         )
 
 
+class NoPhysicalOutputWarning(Warning):
+    def __init__(self, module_without_output: Module):
+        output_chain = "\n- ".join([str(module) for module in module_without_output.module_output_chain])
+        super().__init__(
+            f"WALKMAN detected module '{str(module_without_output)}' which "
+            "has no connection to any other module which is"
+            " send to a physical output. This may be the result from "
+            f"bad routing. The given output chain is: \n\n- {output_chain}\n"
+        )
+
+
 class ModuleContainer(
     typing.Dict[ModuleName, typing.Dict[ReplicationKey, Module]], walkman.CloseMixin
 ):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         if "empty" not in self:
             self.update({"empty": {}})
+
         self["empty"].update(
             {
                 walkman.constants.EMPTY_MODULE_INSTANCE_NAME.split(".")[
@@ -440,6 +453,16 @@ class ModuleContainer(
         )
         for module in self.module_tuple:
             self.prepare_module(module)
+
+        for module in self.module_tuple:
+            if not (is_send_to_physical_output := module.send_to_physical_output):
+                for output_module in module.module_output_chain:
+                    if (
+                        is_send_to_physical_output := output_module.send_to_physical_output
+                    ):
+                        break
+                if not is_send_to_physical_output:
+                    warnings.warn(NoPhysicalOutputWarning(module))
 
     def prepare_module(self, module_instance: Module):
         def assign_module_inputs(module_instance: Module):
