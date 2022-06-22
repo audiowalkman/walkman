@@ -1,5 +1,6 @@
 import abc
 import math
+import inspect
 import typing
 import unittest
 
@@ -251,3 +252,14 @@ class ModuleTestCase(WalkmanTestCase, abc.ABC):
         self.play_module_instance(module_instance)
 
         self.assertFalse(module_instance.pyo_object.isOutputting())
+
+    def test_no_module_input_argument_in_private_initialse(self):
+        # If there are any arguments with equal name as
+        # names of input modules, the passed arguments of a user
+        # will never reach the _initialise method because
+        # of walkmans syntactic sugar (defined in initialise method
+        # of base.Module). Therefore a module class should never
+        # add any argument like this to its _initialise method.
+        module_class = self.get_module_class()
+        for parameter in inspect.signature(module_class._initialise).parameters:
+            self.assertTrue(parameter not in module_class.default_module_input_dict)
