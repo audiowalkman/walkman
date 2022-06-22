@@ -85,6 +85,9 @@ class ModuleTest(walkman.unit_tests.ModuleTestCase):
     def get_filter_module_instance(self, **kwargs):
         return self.get_module_instance(**kwargs, module_class=self.FilterModule)
 
+    def test_hash(self):
+        self.assertTrue(hash(self.get_module_instance()))
+
     def test_deep_inheritance(self):
         self.assertNotEqual(
             self.FilterModule.default_module_input_dict,

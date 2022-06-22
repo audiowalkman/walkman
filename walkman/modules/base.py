@@ -174,11 +174,6 @@ class Module(
 
             cls.__init__ = __init__
 
-    def __hash__(self) -> int:
-        # XXX: This method is overridden by dataclasses and
-        # has to be manually added again.
-        return walkman.NamedMixin.__hash__(self)
-
     def __str__(self) -> str:
         return f"{self.get_class_name()}.{self.replication_key}"
 
