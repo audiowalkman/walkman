@@ -518,6 +518,9 @@ class ModuleContainer(
                 cls.get_module_name_to_module_class_dict()
             )
 
+        # XXX: We have to iterate over 'module_name_to_module_class_dict'
+        # instead of iterating over module_name_to_replication_configuration_dict,
+        # because of syntactic sugar [configure.MODULE_NAME.REPLICATION_KEY.INPUT_NAME]
         module_name_to_module_container = {}
         for module_name, module_class in module_name_to_module_class_dict.items():
             try:
