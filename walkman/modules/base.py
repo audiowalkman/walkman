@@ -96,7 +96,7 @@ class AutoSetup(ModuleInput):
         module_input_name: str = "",
     ) -> Module:
         module_kwargs = dict(self.module_kwargs)
-        if not "replication_key" in module_kwargs:
+        if "replication_key" not in module_kwargs:
             module_kwargs["replication_key"] = self.get_replication_key(
                 parent, module_input_name
             )
