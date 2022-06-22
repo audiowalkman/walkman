@@ -193,8 +193,7 @@ class Module(
 
     # ################## PRIVATE METHODS     ################## #
 
-    def _play(self, duration: float = 0, delay: float = 0):
-        self.fader.play(dur=duration, delay=delay)
+    def _play_without_fader(self, duration: float = 0, delay: float = 0):
         self.pyo_object.play(dur=duration, delay=delay)
         for internal_pyo_object in self.internal_pyo_object_list:
             internal_pyo_object.play(dur=duration, delay=delay)
@@ -203,12 +202,18 @@ class Module(
             for channel_index, audio_stream in enumerate(self.pyo_object):
                 audio_stream.out(channel_index)
 
-    def _stop(self, wait: float = 0):
-        self.fader_stopper.play(delay=wait)
-        wait += self.fade_out_duration
+    def _play(self, duration: float = 0, delay: float = 0):
+        self.fader.play(dur=duration, delay=delay)
+        self._play_without_fader(duration, delay)
+
+    def _stop_without_fader(self, wait: float = 0):
         for internal_pyo_object in self.internal_pyo_object_list:
             internal_pyo_object.stop(wait=wait)
         self.pyo_object.stop(wait=wait)
+
+    def _stop(self, wait: float = 0):
+        self.fader_stopper.play(delay=wait)
+        self._stop_without_fader(wait=wait + self.fade_out_duration)
 
     def _initialise(self, **_):
         ...
@@ -307,6 +312,12 @@ class Module(
 
         # Parse everything else to actual initialise method
         self._initialise(**new_kwargs)
+
+        # When switching playing cues the 'play' method
+        # won't be called. But we have to ensure that the envelopes
+        # are running once we start a new cue.
+        if self.is_playing:
+            self._play_without_fader()
 
         initialised_module_list.append(self)
         return tuple(initialised_module_list)

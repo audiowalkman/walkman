@@ -168,12 +168,6 @@ class Parameter(base.Module):
         self.selector.setVoice(selector_voice)
         self.time = 0
 
-        # XXX: When switching playing cues the 'play' method
-        # won't be called. But we have to ensure that the envelopes
-        # are running once we start a new cue.
-        if self.is_playing:
-            self._play()
-
 
 class ModuleWithDecibel(base.Module, decibel=base.AutoSetup(Parameter)):
     def _setup_pyo_object(self):
