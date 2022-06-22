@@ -30,10 +30,10 @@ __all__ = (
 
 
 class ModuleWithUneffectiveStop(base.Module):
-    def _stop(self, _: float = 0):
+    def _stop(self, wait: float = 0):
         ...
 
-    def stop(self, _: float = 0) -> ModuleWithUneffectiveStop:
+    def stop(self, wait: float = 0) -> ModuleWithUneffectiveStop:
         return self
 
 
