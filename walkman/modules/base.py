@@ -47,8 +47,13 @@ class ModuleInput(abc.ABC):
         parent: typing.Optional[Module] = None,
         module_input_name: str = "",
     ) -> str:
+        # So we can use the syntax:
+        #   [configure.module.sine.example]
+        #
+        #   [configure.module.value.sine_example_child_frequency]
+        #   value = 440
         if parent:
-            return f"child.{str(parent)}.{module_input_name}"
+            return f"{str(parent).replace('.', '_')}_child_{module_input_name}"
         else:
             return ""
 
