@@ -484,15 +484,21 @@ class UndefinedModuleWarning(Warning):
 
 class NoPhysicalOutputWarning(Warning):
     def __init__(self, module_without_output: Module):
-        output_chain = "\n- ".join(
-            [str(module) for module in module_without_output.module_output_chain]
-        )
-        super().__init__(
+        message_list = [
             f"WALKMAN detected module '{str(module_without_output)}' which "
             "has no connection to any other module which is"
             " send to a physical output. This may be the result from "
-            f"bad routing. The given output chain is: \n\n- {output_chain}\n"
-        )
+            f"bad routing. "
+        ]
+        module_output_chain = [
+            str(module) for module in module_without_output.module_output_chain
+        ]
+        if module_output_chain:
+            output_chain = "\n- ".join(module_output_chain)
+            message_list.append(f"The given output chain is: \n\n- {output_chain}\n")
+        else:
+            message_list.append("This module has an empty output chain.")
+        super().__init__(" ".join(message_list))
 
 
 class ModuleContainer(
