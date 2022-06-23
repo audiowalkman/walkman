@@ -108,10 +108,19 @@ class AutoSetup(ModuleInput):
         module_input_name: str = "",
     ) -> Module:
         module_kwargs = dict(self.module_kwargs)
-        if "replication_key" not in module_kwargs:
-            module_kwargs["replication_key"] = self.get_replication_key(
+        try:
+            replication_key = module_kwargs["replication_key"]
+        except KeyError:
+            module_kwargs["replication_key"] = replication_key = self.get_replication_key(
                 parent, module_input_name
             )
+        finally:
+            module_instnce_name = f"{self.module_class.get_class_name()}.{replication_key}"
+            try:
+                return module_container.get_module_by_name(module_instnce_name)
+            except (KeyError, InvalidModuleInstanceNameError):
+                pass
+
         module = self.module_class(**module_kwargs)
         module_instance_dict = {id(module): module}
         module_name = module.get_class_name()
