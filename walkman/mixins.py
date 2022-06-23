@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import time
+import typing
 
 import pyo
 
@@ -106,6 +107,10 @@ class PyoObjectMixin(object):
     @functools.cached_property
     def pyo_object(self) -> pyo.PyoObject:
         return pyo.Sig(0)
+
+    @property
+    def pyo_object_or_float(self) -> typing.Union[pyo.PyoObject, float]:
+        return self.pyo_object
 
 
 class DecibelMixin(object):

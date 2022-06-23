@@ -27,7 +27,7 @@ class ModuleContainerTest(walkman.unit_tests.WalkmanTestCase):
         )
         self.assertEqual(len(module_container), 3)
         self.assertTrue("sine" in module_container)
-        self.assertTrue("parameter" in module_container)
+        self.assertTrue("value" in module_container)
         self.assertTrue("modern" in module_container["sine"])
         self.assertEqual(
             module_container["sine"]["modern"].default_dict,
@@ -35,11 +35,11 @@ class ModuleContainerTest(walkman.unit_tests.WalkmanTestCase):
         )
 
 
-class ModuleTest(walkman.unit_tests.ModuleTestCase):
+class ModuleTest(walkman.unit_tests.ModuleWithFaderTestCase):
     def setUp(self):
         super().setUp()
 
-        class SineModule(walkman.Module):
+        class SineModule(walkman.ModuleWithFader):
             def __init__(self, mul: float = 0.5, **kwargs):
                 self.mul = mul
                 super().__init__(**kwargs)
@@ -57,7 +57,7 @@ class ModuleTest(walkman.unit_tests.ModuleTestCase):
                 self.sine.setFreq(frequency)
 
         class FilterModule(
-            walkman.Module,
+            walkman.ModuleWithFader,
             audio_input=walkman.AutoSetup(SineModule),
             dummy_input=walkman.AutoSetup(SineModule, relevance=False),
         ):

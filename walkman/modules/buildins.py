@@ -12,6 +12,7 @@ from . import base
 
 __all__ = (
     "ModuleWithUneffectiveStop",
+    "Value",
     "Empty",
     "Parameter",
     "AudioInput",
@@ -37,9 +38,18 @@ class ModuleWithUneffectiveStop(base.Module):
         return self
 
 
+class Value(base.Module):
+    def __init__(self, value: float = 0, **kwargs):
+        self.value = value
+        super().__init__(**kwargs)
+
+    @property
+    def pyo_object_or_float(self) -> float:
+        return self.value
+
+
 class Empty(base.Module):
     def _setup_pyo_object(self):
-        super()._setup_pyo_object()
         self.signal = pyo.Sig(0)
         self.internal_pyo_object_list.append(self.signal)
 
@@ -63,7 +73,7 @@ class UndefinedEnvelopeTypeWarning(Warning):
         )
 
 
-class Parameter(base.Module):
+class Parameter(base.ModuleWithFader):
     ITEM_TO_VOICE_DICT = {
         "VALUE_VOICE": 0,
         "LINEAR_ENVELOPE_VOICE": 1,
@@ -169,12 +179,22 @@ class Parameter(base.Module):
         self.time = 0
 
 
-class ModuleWithDecibel(base.Module, decibel=base.AutoSetup(Parameter)):
+class ModuleWithDecibel(base.ModuleWithFader, decibel=base.AutoSetup(Value, module_kwargs={"value": 0})):
     def _setup_pyo_object(self):
         super()._setup_pyo_object()
-        self.amplitude = pyo.DBToA(self.decibel.pyo_object)
-        self.amplitude_signal_to = pyo.SigTo(self.amplitude, time=0.015)
-        self.internal_pyo_object_list.extend([self.amplitude, self.amplitude_signal_to])
+        try:
+            self.amplitude = pyo.DBToA(self.decibel.pyo_object_or_float)
+        # If pyo_object_or_float returns a number this exception will be called
+        except pyo.PyoArgumentTypeError:
+            self.amplitude = walkman.utilities.decibel_to_amplitude_ratio(
+                self.decibel.pyo_object_or_float
+            )
+            self.amplitude_signal_to = self.amplitude
+        else:
+            self.amplitude_signal_to = pyo.SigTo(self.amplitude, time=0.015)
+            self.internal_pyo_object_list.extend(
+                [self.amplitude, self.amplitude_signal_to]
+            )
 
 
 class AudioInput(ModuleWithDecibel):
@@ -217,14 +237,12 @@ class MidiControlInput(ModuleWithUneffectiveStop):
 
 class Sine(
     ModuleWithDecibel,
-    frequency=base.AutoSetup(
-        Parameter, module_kwargs={"default_dict": {"value": 1000}}
-    ),
+    frequency=base.AutoSetup(Value, module_kwargs={"value": 1000}),
 ):
     def _setup_pyo_object(self):
         super()._setup_pyo_object()
         self.sine = pyo.Sine(
-            freq=self.frequency.pyo_object, mul=self.amplitude_signal_to
+            freq=self.frequency.pyo_object_or_float, mul=self.amplitude_signal_to
         )
         self.internal_pyo_object_list.append(self.sine)
 
@@ -427,10 +445,8 @@ class Mixer(
 
 class Filter(
     ModuleWithDecibel,
-    frequency=base.AutoSetup(
-        Parameter, module_kwargs={"default_dict": {"value": 1000}}
-    ),
-    q=base.AutoSetup(Parameter, module_kwargs={"default_dict": {"value": 5}}),
+    frequency=base.AutoSetup(Value, module_kwargs={"value": 1000}),
+    q=base.AutoSetup(Value, module_kwargs={"value": 5}),
     audio_input=base.Catch(walkman.constants.EMPTY_MODULE_INSTANCE_NAME),
 ):
     FILTER_TYPE_TO_INTERNAL_FILTER_TYPE = {
@@ -462,8 +478,8 @@ class Filter(
         self.audio_filter = pyo.Biquadx(
             self.audio_input.pyo_object,
             mul=self.amplitude_signal_to,
-            freq=self.frequency.pyo_object,
-            q=self.q.pyo_object,
+            freq=self.frequency.pyo_object_or_float,
+            q=self.q.pyo_object_or_float,
             stages=self.stages,
             type=self.internal_filter_type,
         )
@@ -477,7 +493,7 @@ class Filter(
 class ConvolutionReverb(
     ModuleWithDecibel,
     audio_input=base.Catch(walkman.constants.EMPTY_MODULE_INSTANCE_NAME),
-    balance=base.AutoSetup(Parameter, module_kwargs={"default_dict": {"value": 1}}),
+    balance=base.AutoSetup(Value, module_kwargs={"value": 1}),
 ):
     def __init__(self, *, impulse_path: str, sample_size: int = 1024, **kwargs):
         super().__init__(**kwargs)
@@ -492,7 +508,7 @@ class ConvolutionReverb(
             self.impulse_path,
             size=self.sample_size,
             mul=self.amplitude_signal_to,
-            bal=self.balance.pyo_object,
+            bal=self.balance.pyo_object_or_float,
         ).stop()
 
         self.internal_pyo_object_list.append(self.convolution_reverb)
@@ -505,19 +521,19 @@ class ConvolutionReverb(
 class WaveguideReverb(
     ModuleWithDecibel,
     audio_input=base.Catch(walkman.constants.EMPTY_MODULE_INSTANCE_NAME),
-    balance=base.AutoSetup(Parameter, module_kwargs={"default_dict": {"value": 1}}),
+    balance=base.AutoSetup(Value, module_kwargs={"value": 1}),
     cutoff_frequency=base.AutoSetup(
-        Parameter, module_kwargs={"default_dict": {"value": 6000}}
+        Value, module_kwargs={"value": 6000}
     ),
-    feedback=base.AutoSetup(Parameter, module_kwargs={"default_dict": {"value": 0.6}}),
+    feedback=base.AutoSetup(Value, module_kwargs={"value": 0.6}),
 ):
     def _setup_pyo_object(self):
         super()._setup_pyo_object()
         self.waveguide_reverb = pyo.WGVerb(
             self.audio_input.pyo_object,
-            feedback=self.feedback.pyo_object,
+            feedback=self.feedback.pyo_object_or_float,
             mul=self.amplitude_signal_to,
-            bal=self.balance.pyo_object,
+            bal=self.balance.pyo_object_or_float,
         ).stop()
         self.internal_pyo_object_list.append(self.waveguide_reverb)
 
@@ -529,16 +545,14 @@ class WaveguideReverb(
 class ButterworthLowpassFilter(
     ModuleWithDecibel,
     audio_input=base.Catch(walkman.constants.EMPTY_MODULE_INSTANCE_NAME),
-    frequency=base.AutoSetup(
-        Parameter, module_kwargs={"default_dict": {"value": 1000}}
-    ),
+    frequency=base.AutoSetup(Value, module_kwargs={"value": 1000}),
 ):
     def _setup_pyo_object(self):
         super()._setup_pyo_object()
         self.lowpass_filter = pyo.ButLP(
             self.audio_input.pyo_object,
             mul=self.amplitude_signal_to,
-            freq=self.frequency.pyo_object,
+            freq=self.frequency.pyo_object_or_float,
         ).stop()
         self.internal_pyo_object_list.append(self.lowpass_filter)
 
@@ -550,16 +564,14 @@ class ButterworthLowpassFilter(
 class ButterworthHighpassFilter(
     ModuleWithDecibel,
     audio_input=base.Catch(walkman.constants.EMPTY_MODULE_INSTANCE_NAME),
-    frequency=base.AutoSetup(
-        Parameter, module_kwargs={"default_dict": {"value": 1000}}
-    ),
+    frequency=base.AutoSetup(Value, module_kwargs={"value": 1000}),
 ):
     def _setup_pyo_object(self):
         super()._setup_pyo_object()
         self.highpass_filter = pyo.ButHP(
             self.audio_input.pyo_object,
             mul=self.amplitude_signal_to,
-            freq=self.frequency.pyo_object,
+            freq=self.frequency.pyo_object_or_float,
         ).stop()
         self.internal_pyo_object_list.append(self.highpass_filter)
 
@@ -571,8 +583,8 @@ class ButterworthHighpassFilter(
 class Equalizer(
     ModuleWithDecibel,
     audio_input=base.Catch(walkman.constants.EMPTY_MODULE_INSTANCE_NAME),
-    frequency=base.AutoSetup(Parameter, module_kwargs={"default_dict": {"value": 500}}),
-    boost=base.AutoSetup(Parameter, module_kwargs={"default_dict": {"value": -3}}),
+    frequency=base.AutoSetup(Value, module_kwargs={"value": 500}),
+    boost=base.AutoSetup(Value, module_kwargs={"value": -3}),
 ):
     FILTER_TYPE_TO_INTERNAL_FILTER_TYPE = {
         "peak": 0,
@@ -601,8 +613,8 @@ class Equalizer(
         self.equalizer = pyo.EQ(
             self.audio_input.pyo_object,
             mul=self.amplitude_signal_to,
-            freq=self.frequency.pyo_object,
-            boost=self.boost.pyo_object,
+            freq=self.frequency.pyo_object_or_float,
+            boost=self.boost.pyo_object_or_float,
             type=self.internal_filter_type,
         ).stop()
         self.internal_pyo_object_list.append(self.equalizer)

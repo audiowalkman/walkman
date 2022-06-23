@@ -184,8 +184,38 @@ class ModuleTestCase(WalkmanTestCase, abc.ABC):
             )
         )
 
-        self.assertTrue(self.is_pyo_object_silent(module_instance.pyo_object))
+        self.assertTrue(self.is_pyo_object_silent(module_instance.pyo_object)) 
 
+    def test_initialise_basic(self):
+        """Ensure there are no errors when calling initialise method."""
+        module_instance = self.get_module_instance(fade_out_duration=10)
+        module_instance.initialise()
+
+    def test_send_to_physical_output(self):
+        module_instance = self.get_module_instance(send_to_physical_output=True)
+        self.play_module_instance(module_instance)
+
+        self.assertTrue(module_instance.pyo_object.isOutputting())
+
+    def test_do_not_send_to_physical_output(self):
+        module_instance = self.get_module_instance(send_to_physical_output=False)
+        self.play_module_instance(module_instance)
+
+        self.assertFalse(module_instance.pyo_object.isOutputting())
+
+    def test_no_module_input_argument_in_private_initialse(self):
+        # If there are any arguments with equal name as
+        # names of input modules, the passed arguments of a user
+        # will never reach the _initialise method because
+        # of walkmans syntactic sugar (defined in initialise method
+        # of base.Module). Therefore a module class should never
+        # add any argument like this to its _initialise method.
+        module_class = self.get_module_class()
+        for parameter in inspect.signature(module_class._initialise).parameters:
+            self.assertTrue(parameter not in module_class.default_module_input_dict)
+
+
+class ModuleWithFaderTestCase(ModuleTestCase):
     def test_fader(self):
         """Ensure pyo_object is a combination of _pyo_object and fader"""
 
@@ -235,31 +265,3 @@ class ModuleTestCase(WalkmanTestCase, abc.ABC):
 
         self.assertFalse(module_instance.pyo_object.isPlaying())
         self.assertTrue(self.is_pyo_object_silent(module_instance.pyo_object, 2))
-
-    def test_initialise_basic(self):
-        """Ensure there are no errors when calling initialise method."""
-        module_instance = self.get_module_instance(fade_out_duration=10)
-        module_instance.initialise()
-
-    def test_send_to_physical_output(self):
-        module_instance = self.get_module_instance(send_to_physical_output=True)
-        self.play_module_instance(module_instance)
-
-        self.assertTrue(module_instance.pyo_object.isOutputting())
-
-    def test_do_not_send_to_physical_output(self):
-        module_instance = self.get_module_instance(send_to_physical_output=False)
-        self.play_module_instance(module_instance)
-
-        self.assertFalse(module_instance.pyo_object.isOutputting())
-
-    def test_no_module_input_argument_in_private_initialse(self):
-        # If there are any arguments with equal name as
-        # names of input modules, the passed arguments of a user
-        # will never reach the _initialise method because
-        # of walkmans syntactic sugar (defined in initialise method
-        # of base.Module). Therefore a module class should never
-        # add any argument like this to its _initialise method.
-        module_class = self.get_module_class()
-        for parameter in inspect.signature(module_class._initialise).parameters:
-            self.assertTrue(parameter not in module_class.default_module_input_dict)

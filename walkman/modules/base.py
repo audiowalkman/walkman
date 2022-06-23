@@ -14,7 +14,14 @@ import pyo
 import walkman
 
 
-__all__ = ("ModuleInput", "Catch", "AutoSetup", "Module", "ModuleContainer")
+__all__ = (
+    "ModuleInput",
+    "Catch",
+    "AutoSetup",
+    "Module",
+    "ModuleWithFader",
+    "ModuleContainer",
+)
 
 
 def override_default_kwargs(method_to_wrap: typing.Callable) -> typing.Callable:
@@ -122,16 +129,12 @@ class Module(
         replication_key: str = "",
         send_to_physical_output: bool = False,
         auto_stop: bool = True,
-        fade_in_duration: float = 0.1,
-        fade_out_duration: float = 0.2,
         module_input_dict: typing.Dict[str, ModuleInput] = dict([]),
         default_dict: typing.Dict[str, typing.Any] = dict([]),
     ):
         self.replication_key = replication_key
         self.send_to_physical_output = send_to_physical_output
         self.auto_stop = auto_stop
-        self.fade_in_duration = fade_in_duration
-        self.fade_out_duration = fade_out_duration
         self.output_module_set = set([])
         self.module_input_dict = module_input_dict
         self.default_dict = default_dict
@@ -180,12 +183,6 @@ class Module(
     def __repr__(self) -> str:
         return str(self)
 
-    # ################## ABSTRACT PROPERTIES ################## #
-
-    @abc.abstractproperty
-    def _pyo_object(self) -> pyo.PyoObject:
-        ...
-
     # ################## PRIVATE METHODS     ################## #
 
     def _play_without_fader(self, duration: float = 0, delay: float = 0):
@@ -198,7 +195,6 @@ class Module(
                 audio_stream.out(channel_index)
 
     def _play(self, duration: float = 0, delay: float = 0):
-        self.fader.play(dur=duration, delay=delay)
         self._play_without_fader(duration, delay)
 
     def _stop_without_fader(self, wait: float = 0):
@@ -207,24 +203,13 @@ class Module(
         self.pyo_object.stop(wait=wait)
 
     def _stop(self, wait: float = 0):
-        self.fader_stopper.play(delay=wait)
-        self._stop_without_fader(wait=wait + self.fade_out_duration)
+        self._stop_without_fader(wait=wait)
 
     def _initialise(self, **_):
         ...
 
     def _setup_pyo_object(self):
-        self.fader = pyo.Fader(
-            fadein=self.fade_in_duration, fadeout=self.fade_out_duration
-        )
-        # XXX: We need to use a trigger for stopping the fader, because
-        # fader objects ignore the 'wait' parameter. Without this trigger
-        # the wait parameter wouldn't work.
-        self.fader_stopper = pyo.Trig().stop()
-        self.fader_stopper_function = pyo.TrigFunc(
-            input=self.fader_stopper,
-            function=lambda: self.fader.stop() if not self.is_playing else None,
-        ).play()
+        ...
 
     # ################## PUBLIC METHODS      ################## #
 
@@ -319,6 +304,23 @@ class Module(
 
     # ################## PUBLIC PROPERTIES  ################## #
 
+    @functools.cached_property
+    def pyo_object(self) -> pyo.PyoObject:
+        try:
+            return self._pyo_object
+        except AttributeError:
+            self._pyo_object = super().pyo_object
+            self.internal_pyo_object_list.append(self._pyo_object)
+            return self.pyo_object
+
+    @property
+    def fade_in_duration(self) -> float:
+        return 0
+
+    @property
+    def fade_out_duration(self) -> float:
+        return 0
+
     @property
     def has_assigned_inputs(self) -> bool:
         try:
@@ -336,12 +338,6 @@ class Module(
     @property
     def duration(self) -> float:
         return 0
-
-    @functools.cached_property
-    def pyo_object(self) -> pyo.PyoObject:
-        pyo_object = self._pyo_object * self.fader
-        pyo_object.stop()
-        return pyo_object
 
     @functools.cached_property
     def module_input_chain(self) -> typing.Tuple[Module, ...]:
@@ -404,6 +400,68 @@ class Module(
         return tuple(module_list)
 
 
+class ModuleWithFader(Module):
+    def __init__(
+        self, fade_in_duration: float = 0.1, fade_out_duration: float = 0.2, **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.fade_in_duration = fade_in_duration
+        self.fade_out_duration = fade_out_duration
+
+    # ################## ABSTRACT PROPERTIES ################## #
+
+    @abc.abstractproperty
+    def _pyo_object(self) -> pyo.PyoObject:
+        ...
+
+    # ################## PRIVATE METHODS     ################## #
+
+    def _setup_pyo_object(self):
+        self.fader = pyo.Fader(
+            fadein=self.fade_in_duration, fadeout=self.fade_out_duration
+        )
+        # XXX: We need to use a trigger for stopping the fader, because
+        # fader objects ignore the 'wait' parameter. Without this trigger
+        # the wait parameter wouldn't work.
+        self.fader_stopper = pyo.Trig().stop()
+        self.fader_stopper_function = pyo.TrigFunc(
+            input=self.fader_stopper,
+            function=lambda: self.fader.stop() if not self.is_playing else None,
+        ).play()
+
+    def _play(self, duration: float = 0, delay: float = 0):
+        self.fader.play(dur=duration, delay=delay)
+        self._play_without_fader(duration, delay)
+
+    def _stop(self, wait: float = 0):
+        self.fader_stopper.play(delay=wait)
+        self._stop_without_fader(wait=wait + self.fade_out_duration)
+
+    # ################## PUBLIC PROPERTIES ################## #
+
+    @property
+    def fade_in_duration(self) -> float:
+        return self._fade_in_duration
+
+    @fade_in_duration.setter
+    def fade_in_duration(self, fade_in_duration: float):
+        self._fade_in_duration = fade_in_duration
+
+    @property
+    def fade_out_duration(self) -> float:
+        return self._fade_out_duration
+
+    @fade_out_duration.setter
+    def fade_out_duration(self, fade_out_duration: float):
+        self._fade_out_duration = fade_out_duration
+
+    @functools.cached_property
+    def pyo_object(self) -> pyo.PyoObject:
+        pyo_object = self._pyo_object * self.fader
+        pyo_object.stop()
+        return pyo_object
+
+
 class InvalidModuleInstanceNameError(Exception):
     def __init__(self, invalid_module_instance_name: str):
         super().__init__(
@@ -426,7 +484,9 @@ class UndefinedModuleWarning(Warning):
 
 class NoPhysicalOutputWarning(Warning):
     def __init__(self, module_without_output: Module):
-        output_chain = "\n- ".join([str(module) for module in module_without_output.module_output_chain])
+        output_chain = "\n- ".join(
+            [str(module) for module in module_without_output.module_output_chain]
+        )
         super().__init__(
             f"WALKMAN detected module '{str(module_without_output)}' which "
             "has no connection to any other module which is"
