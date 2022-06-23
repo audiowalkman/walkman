@@ -533,6 +533,7 @@ class ModuleContainer(
         )
         for module in self.module_tuple:
             self.prepare_module(module)
+            module._stop_without_fader()
 
         for module in self.module_tuple:
             if not (is_send_to_physical_output := module.send_to_physical_output):
