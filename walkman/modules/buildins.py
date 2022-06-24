@@ -11,6 +11,7 @@ import walkman
 from . import base
 
 __all__ = (
+    "ModuleWithUneffectivePlay",
     "ModuleWithUneffectiveStop",
     "Value",
     "Empty",
@@ -31,6 +32,9 @@ __all__ = (
 
 
 class ModuleWithUneffectiveStop(base.Module):
+    def _stop_without_fader(self, wait: float = 0):
+        ...
+
     def _stop(self, wait: float = 0):
         ...
 
@@ -38,7 +42,18 @@ class ModuleWithUneffectiveStop(base.Module):
         return self
 
 
-class Value(base.Module):
+class ModuleWithUneffectivePlay(base.Module):
+    def _play_without_fader(self, duration: float = 0, delay: float = 0):
+        ...
+
+    def _play(self, duration: float = 0, delay: float = 0):
+        ...
+
+    def play(self, duration: float = 0, delay: float = 0) -> ModuleWithUneffectivePlay:
+        return self
+
+
+class Value(ModuleWithUneffectivePlay, ModuleWithUneffectiveStop):
     def __init__(self, value: float = 0, **kwargs):
         self.value = value
         super().__init__(**kwargs)
@@ -151,6 +166,7 @@ class Parameter(base.ModuleWithFader):
         envelope_type: str = DEFAULT_ENVELOPE_TYPE,
         rise_time: float = 0.001,
         fall_time: float = 0.001,
+        **kwargs,
     ):
         self.portamento.setRiseTime(rise_time)
         self.portamento.setFallTime(fall_time)
@@ -179,7 +195,9 @@ class Parameter(base.ModuleWithFader):
         self.time = 0
 
 
-class ModuleWithDecibel(base.ModuleWithFader, decibel=base.AutoSetup(Value, module_kwargs={"value": 0})):
+class ModuleWithDecibel(
+    base.ModuleWithFader, decibel=base.AutoSetup(Value, module_kwargs={"value": 0})
+):
     def _setup_pyo_object(self):
         super()._setup_pyo_object()
         try:
@@ -273,11 +291,14 @@ MixerIndex = int
 MixerInfo = typing.Tuple[MixerIndex, ...]
 """Each channel of an audio signal has a specific index in the mixer"""
 
+MixerAudioInputKeyPrefix = "audio_input_"
+MixerAudioInputKeyPrefixCount = len(MixerAudioInputKeyPrefix)
+
 
 class Mixer(
     ModuleWithDecibel,
     **{
-        f"audio_input_{index}": base.Catch(
+        f"{MixerAudioInputKeyPrefix}{index}": base.Catch(
             walkman.constants.EMPTY_MODULE_INSTANCE_NAME, relevance=False
         )
         for index in range(100)
@@ -356,16 +377,20 @@ class Mixer(
                 )
 
         for audio_input_key in self.module_input_dict.keys():
-            module_instance = getattr(self, audio_input_key)
-            if not isinstance(module_instance, Empty):
-                if audio_input_key not in audio_input_key_to_channel_mapping_dict:
-                    channel_mapping = {}
-                    for channel_index in range(len(module_instance.pyo_object)):
-                        output_channel = channel_index % self.input_channel_count
-                        channel_mapping.update({channel_index: output_channel})
-                    audio_input_key_to_channel_mapping_dict.update(
-                        {audio_input_key: channel_mapping}
-                    )
+            if (
+                audio_input_key[:MixerAudioInputKeyPrefixCount]
+                == MixerAudioInputKeyPrefix
+            ):
+                module_instance = getattr(self, audio_input_key)
+                if not isinstance(module_instance, Empty):
+                    if audio_input_key not in audio_input_key_to_channel_mapping_dict:
+                        channel_mapping = {}
+                        for channel_index in range(len(module_instance.pyo_object)):
+                            output_channel = channel_index % self.input_channel_count
+                            channel_mapping.update({channel_index: output_channel})
+                        audio_input_key_to_channel_mapping_dict.update(
+                            {audio_input_key: channel_mapping}
+                        )
 
         for (
             audio_input_key,
@@ -522,9 +547,7 @@ class WaveguideReverb(
     ModuleWithDecibel,
     audio_input=base.Catch(walkman.constants.EMPTY_MODULE_INSTANCE_NAME),
     balance=base.AutoSetup(Value, module_kwargs={"value": 1}),
-    cutoff_frequency=base.AutoSetup(
-        Value, module_kwargs={"value": 6000}
-    ),
+    cutoff_frequency=base.AutoSetup(Value, module_kwargs={"value": 6000}),
     feedback=base.AutoSetup(Value, module_kwargs={"value": 0.6}),
 ):
     def _setup_pyo_object(self):
