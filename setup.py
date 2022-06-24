@@ -19,7 +19,7 @@ setuptools.setup(
     setup_requires=[],
     install_requires=[
         # for audio
-        "pyo==1.0.4",
+        "pyo>=1.0.3",
         # for GUI
         "PySimpleGUI>=4.60.0, <5.0.0",
         # for CLI
@@ -32,7 +32,7 @@ setuptools.setup(
     packages=[
         package for package in setuptools.find_packages() if package[:5] != "tests"
     ],
+    python_requires=">=3.8",
     extras_require={"testing": ["nose"]},
-    python_requires="==3.8",
     entry_points={"console_scripts": ["walkman=walkman.__main__:main"]},
 )
