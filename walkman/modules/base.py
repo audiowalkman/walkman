@@ -111,11 +111,13 @@ class AutoSetup(ModuleInput):
         try:
             replication_key = module_kwargs["replication_key"]
         except KeyError:
-            module_kwargs["replication_key"] = replication_key = self.get_replication_key(
-                parent, module_input_name
-            )
+            module_kwargs[
+                "replication_key"
+            ] = replication_key = self.get_replication_key(parent, module_input_name)
         finally:
-            module_instnce_name = f"{self.module_class.get_class_name()}.{replication_key}"
+            module_instnce_name = (
+                f"{self.module_class.get_class_name()}.{replication_key}"
+            )
             try:
                 return module_container.get_module_by_name(module_instnce_name)
             except (KeyError, InvalidModuleInstanceNameError):
@@ -129,6 +131,15 @@ class AutoSetup(ModuleInput):
         except KeyError:
             module_container.update({module_name: module_instance_dict})
         return module
+
+
+class IgnoredInitializationArgumentsWarning(RuntimeWarning):
+    def __init__(self, module: Module, ignored_kwargs: dict):
+        super().__init__(
+            "The following unexpected key word arguments "
+            f"which were given to '{str(module)}' have "
+            f"been ignored by WALKMAN: {ignored_kwargs}"
+        )
 
 
 class Module(
@@ -219,8 +230,9 @@ class Module(
     def _stop(self, wait: float = 0):
         self._stop_without_fader(wait=wait)
 
-    def _initialise(self, **_):
-        ...
+    def _initialise(self, **kwargs):
+        if kwargs:
+            warnings.warn(IgnoredInitializationArgumentsWarning(self, kwargs))
 
     def _setup_pyo_object(self):
         ...

@@ -168,6 +168,7 @@ class Parameter(base.ModuleWithFader):
         fall_time: float = 0.001,
         **kwargs,
     ):
+        super()._initialise(**kwargs)
         self.portamento.setRiseTime(rise_time)
         self.portamento.setFallTime(fall_time)
         selector_voice = None
@@ -244,7 +245,8 @@ class MidiControlInput(ModuleWithUneffectiveStop):
         )
         self.internal_pyo_object_list.append(self.midi_input)
 
-    def _initialise(self, minima: float = 0, maxima: float = 1, **_):
+    def _initialise(self, minima: float = 0, maxima: float = 1, **kwargs):
+        super()._initialise(**kwargs)
         self.midi_input.setMinScale(minima)
         self.midi_input.setMaxScale(maxima)
 
@@ -642,8 +644,9 @@ class Equalizer(
         ).stop()
         self.internal_pyo_object_list.append(self.equalizer)
 
-    def _initialise(self, q: float = 1, **_):
+    def _initialise(self, q: float = 1, **kwargs):
         self.equalizer.setQ(q)
+        super()._initialise(**kwargs)
 
     @functools.cached_property
     def _pyo_object(self) -> pyo.PyoObject:
