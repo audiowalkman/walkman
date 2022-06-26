@@ -8,6 +8,20 @@ import walkman
 
 __all__ = ("Cue", "CueManager")
 
+
+class UndefinedModuleWarning(Warning):
+    def __init__(self, cue_name: str, module_name: str):
+        super().__init__(f"CUE '{cue_name}': Found undefined module '{module_name}'.")
+
+
+class UndefinedModuleReplicationWarning(Warning):
+    def __init__(self, cue_name: str, module_name: str, undefined_replication_key: str):
+        super().__init__(
+            f"CUE '{cue_name}': Found undefined replication '{undefined_replication_key}' "
+            f"in module '{module_name}'. WALKMAN ignored undefined replication."
+        )
+
+
 ModuleNameToInitialiseKwargsDict = typing.Dict[str, typing.Union[bool, dict]]
 
 
@@ -39,6 +53,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
 
     def _initialise_module_tuple(
         self,
+        module_name: str,
         module_dict: typing.Dict[str, walkman.Module],
         replication_configuration: typing.Dict[int, typing.Dict[str, typing.Any]],
     ) -> typing.Tuple[walkman.Module, ...]:
@@ -49,8 +64,12 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
         ) in replication_configuration.items():
             try:
                 module = module_dict[module_replication_key]
-            except IndexError:
-                warnings.warn(f"Replication '{module_replication_key}' doesn't exist.")
+            except KeyError:
+                warnings.warn(
+                    UndefinedModuleReplicationWarning(
+                        self.name, module_name, module_replication_key
+                    )
+                )
             else:
                 try:
                     initialised_module_list.extend(
@@ -105,9 +124,20 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
             module_name,
             replication_configuration,
         ) in self.module_name_to_replication_configuration.items():
-            module_dict = self._module_container[module_name]
-            for replication_key in replication_configuration.keys():
-                active_module_list.append(module_dict[replication_key])
+            try:
+                module_dict = self._module_container[module_name]
+            except KeyError:
+                warnings.warn(UndefinedModuleWarning(self.name, module_name))
+            else:
+                for replication_key in replication_configuration.keys():
+                    try:
+                        active_module_list.append(module_dict[replication_key])
+                    except KeyError:
+                        warnings.warn(
+                            UndefinedModuleReplicationWarning(
+                                self.name, module_name, replication_key
+                            )
+                        )
         return tuple(active_module_list)
 
     @functools.cached_property
@@ -190,7 +220,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
             else:
                 initialised_module_list.extend(
                     self._initialise_module_tuple(
-                        module_dict, replication_configuration
+                        module_name, module_dict, replication_configuration
                     )
                 )
 
