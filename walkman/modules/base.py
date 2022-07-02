@@ -527,6 +527,23 @@ class NoPhysicalOutputWarning(Warning):
         super().__init__(" ".join(message_list))
 
 
+class ConfigureModuleError(TypeError):
+    def __init__(
+        self,
+        replication_key: str,
+        module_class: typing.Type[Module],
+        module_configuration: typing.Dict[str, typing.Any],
+        exception_text: str,
+    ):
+        super().__init__(
+            f"Found invalid module configuration for module "
+            f"'{module_class.get_class_name()}.{replication_key}':\n\n"
+            f"{module_configuration}\n"
+            "(Original TypeError message:\n"
+            f"{exception_text}"
+        )
+
+
 class ModuleContainer(
     typing.Dict[ModuleName, typing.Dict[ReplicationKey, Module]], walkman.CloseMixin
 ):
@@ -629,9 +646,17 @@ class ModuleContainer(
                 replication_key,
                 module_configuration,
             ) in replication_key_to_module_configuration_dict.items():
-                module = module_class(
-                    replication_key=replication_key, **module_configuration
-                )
+                try:
+                    module = module_class(
+                        replication_key=replication_key, **module_configuration
+                    )
+                except TypeError as type_error:
+                    raise ConfigureModuleError(
+                        replication_key,
+                        module_class,
+                        module_configuration,
+                        str(type_error),
+                    )
                 module_dict[replication_key] = module
             if module_dict:
                 module_name_to_module_container.update({module_name: module_dict})
