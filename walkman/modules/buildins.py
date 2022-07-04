@@ -329,7 +329,7 @@ class Mixer(
 
         self.input_mixer = pyo.Mixer(outs=self.input_channel_count)
         self.output_mixer = pyo.Mixer(
-            outs=self.output_channel_count  # , mul=self.amplitude_signal_to
+            outs=self.output_channel_count, mul=self.amplitude_signal_to
         )
 
         for (
