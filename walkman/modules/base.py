@@ -67,14 +67,15 @@ class ModuleInput(abc.ABC):
         ...
 
 
-class Catch(ModuleInput):
-    class InvalidModuleInstanceNameWarning(RuntimeWarning):
-        def __init__(self, module_instance_name: str, parent: typing.Optional[Module]):
-            super().__init__(
-                f"WALKMAN couldn't find the module '{module_instance_name}' for "
-                f"the parent module '{str(parent)}'."
-            )
+class InvalidModuleInstanceNameWarning(RuntimeWarning):
+    def __init__(self, module_instance_name: str, parent: typing.Optional[Module]):
+        super().__init__(
+            f"WALKMAN couldn't find the module '{module_instance_name}' for "
+            f"the parent module '{str(parent)}'."
+        )
 
+
+class Catch(ModuleInput):
     def __init__(self, module_instance_name: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.module_instance_name = module_instance_name
@@ -161,7 +162,6 @@ class MissingInitializationArgumentsWarning(RuntimeWarning):
             " WALKMAN skipped the initialization of the given module."
             f" The original error is:\n{error_string}."
         )
-
 
 
 class Module(
