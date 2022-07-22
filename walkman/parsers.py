@@ -154,9 +154,7 @@ def jinja2_file_path_to_backend(jinja2_file_path: str) -> walkman.Backend:
         "/".join(split_jinja2_file_path[:-1]),
         split_jinja2_file_path[-1],
     )
-    toml_file_path = (
-        f"{jinja2_file_directory_path}/.{jinja2_file_file_path.split('.')[0]}.orc"
-    )
+    toml_file_path = f"{jinja2_file_directory_path or '.'}/.{jinja2_file_file_path.split('.')[0]}.toml"
     with open(toml_file_path, "w") as toml_file:
         toml_file.write(toml_str)
     walkman.constants.LOGGER.info(
