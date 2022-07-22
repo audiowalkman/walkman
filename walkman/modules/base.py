@@ -142,6 +142,17 @@ class IgnoredInitializationArgumentsWarning(RuntimeWarning):
         )
 
 
+class MissingInitializationArgumentsWarning(RuntimeWarning):
+    def __init__(self, module: Module, error_string: str):
+        super().__init__(
+            f"The module {module} missed initialization arguments "
+            "(which need to be provided with either the [configure.module.name.default_dict]"
+            " syntax or with the [cue.cue_name.module.name] syntax)."
+            " WALKMAN skipped the initialization of the given module."
+            f" The original error is:\n{error_string}."
+        )
+
+
 class Module(
     walkman.PlayMixin,
     walkman.JumpToMixin,
@@ -317,7 +328,10 @@ class Module(
                 new_kwargs.update({argument_key: argument_value})
 
         # Parse everything else to actual initialise method
-        self._initialise(**new_kwargs)
+        try:
+            self._initialise(**new_kwargs)
+        except TypeError as error:
+            warnings.warn(MissingInitializationArgumentsWarning(self, str(error)))
 
         # When switching playing cues the 'play' method
         # won't be called. But we have to ensure that the envelopes
