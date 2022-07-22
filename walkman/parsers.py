@@ -149,7 +149,14 @@ def jinja2_file_path_to_backend(jinja2_file_path: str) -> walkman.Backend:
     environment = jinja2.Environment(loader=jinja2.FileSystemLoader("./"))
     template = environment.get_template(jinja2_file_path)
     toml_str = template.render()
-    toml_file_path = f".{jinja2_file_path.split('.')[0]}.toml"
+    split_jinja2_file_path = jinja2_file_path.split("/")
+    jinja2_file_directory_path, jinja2_file_file_path = (
+        "/".join(split_jinja2_file_path[:-1]),
+        split_jinja2_file_path[-1],
+    )
+    toml_file_path = (
+        f"{jinja2_file_directory_path}/.{jinja2_file_file_path.split('.')[0]}.orc"
+    )
     with open(toml_file_path, "w") as toml_file:
         toml_file.write(toml_str)
     walkman.constants.LOGGER.info(
