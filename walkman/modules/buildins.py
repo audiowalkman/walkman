@@ -233,15 +233,22 @@ class AudioInput(ModuleWithDecibel):
 
 
 class MidiControlInput(ModuleWithUneffectiveStop):
-    def __init__(self, midi_control_number: int = 0, midi_channel: int = 0, **kwargs):
+    def __init__(
+        self,
+        midi_control_number: int = 0,
+        midi_channel: int = 0,
+        initial_value: float = 0,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
+        self.initial_value = initial_value
         self.midi_control_number = midi_control_number
         self.midi_channel = midi_channel
 
     def _setup_pyo_object(self):
         super()._setup_pyo_object()
         self.midi_input = pyo.Midictl(
-            self.midi_control_number, channel=self.midi_channel
+            self.midi_control_number, channel=self.midi_channel, init=self.initial_value
         )
         self.internal_pyo_object_list.append(self.midi_input)
 
