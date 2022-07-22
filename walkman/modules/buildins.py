@@ -32,6 +32,12 @@ __all__ = (
 
 
 class ModuleWithUneffectiveStop(base.Module):
+    def setup_pyo_object(self):
+        super().setup_pyo_object()
+        # XXX: Modules which inherit from 'ModuleWithUneffectiveStop' are expected
+        #      to run when the software starts.
+        self._play()
+
     def _stop_without_fader(self, wait: float = 0):
         ...
 
