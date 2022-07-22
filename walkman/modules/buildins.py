@@ -36,6 +36,7 @@ class ModuleWithUneffectiveStop(base.Module):
         super().setup_pyo_object()
         # XXX: Modules which inherit from 'ModuleWithUneffectiveStop' are expected
         #      to run when the software starts.
+        self.initialise()
         self._play()
 
     def _stop_without_fader(self, wait: float = 0):
