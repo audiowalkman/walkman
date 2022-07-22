@@ -68,6 +68,13 @@ class ModuleInput(abc.ABC):
 
 
 class Catch(ModuleInput):
+    class InvalidModuleInstanceNameWarning(RuntimeWarning):
+        def __init__(self, module_instance_name: str, parent: typing.Optional[Module]):
+            super().__init__(
+                f"WALKMAN couldn't find the module '{module_instance_name}' for "
+                f"the parent module '{str(parent)}'."
+            )
+
     def __init__(self, module_instance_name: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.module_instance_name = module_instance_name
@@ -81,6 +88,9 @@ class Catch(ModuleInput):
         try:
             return module_container.get_module_by_name(self.module_instance_name)
         except (KeyError, InvalidModuleInstanceNameError):
+            warnings.warn(
+                InvalidModuleInstanceNameWarning(self.module_instance_name, parent)
+            )
             return module_container.get_module_by_name(
                 walkman.constants.EMPTY_MODULE_INSTANCE_NAME
             )
@@ -151,6 +161,7 @@ class MissingInitializationArgumentsWarning(RuntimeWarning):
             " WALKMAN skipped the initialization of the given module."
             f" The original error is:\n{error_string}."
         )
+
 
 
 class Module(
