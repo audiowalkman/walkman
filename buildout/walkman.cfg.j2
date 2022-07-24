@@ -1,10 +1,12 @@
 [buildout]
 parts = walkman
 versions = versions
+develop = {{ pyo_path }}
 
 [walkman]
 recipe = zc.recipe.egg
 eggs =
+    pyo
     audiowalkman
     {% for module in module_dict.keys() %}
     {{ module }}
