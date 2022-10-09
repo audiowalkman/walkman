@@ -21,7 +21,7 @@ setuptools.setup(
         # for audio
         "pyo>=1.0.3",
         # for GUI
-        "PySimpleGUI>=4.60.0, <5.0.0",
+        "PySimpleGUI>=4.59.0, <5.0.0",
         # for CLI
         "click>=8.1.3, <9.0.0",
         # to read config files
