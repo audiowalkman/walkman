@@ -705,7 +705,7 @@ class ModuleContainer(
     def get_module_by_name(self, module_instance_name: str) -> Module:
         try:
             module_name, replication_key = module_instance_name.split(".")
-        except ValueError:
+        except (AttributeError, ValueError):
             raise InvalidModuleInstanceNameError(module_instance_name)
         else:
             return self[module_name][replication_key]
