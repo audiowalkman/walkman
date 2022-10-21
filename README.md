@@ -24,8 +24,7 @@ walkman is available on pip:
 pip3 install audiowalkman
 ```
 
-You can also use [buildout](https://buildout.readthedocs.io/) to create an isolated environment.
-Please consult the [respective README](https://github.com/levinericzimmermann/walkman/blob/main/buildout/README.md) for more information.
+Alternatively you can use [Nix](https://nixos.org/) to install walkman.
 
 ## Configuration file
 
@@ -84,10 +83,11 @@ walkman my_composition.toml
 
 ### Automatic
 
-The `run-tests` script setups a test environment and runs automatic unit tests.
+With nix tests can be run with a newly compiled isolated setup:
+
 
 ```bash
-./run-tests
+nix-build default.nix
 ```
 
 ### Manual
