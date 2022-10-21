@@ -10,7 +10,7 @@ LOGGER = logging.getLogger("py.warnings")
 """Global logger"""
 
 LOGGER.addHandler(logging.StreamHandler())
-LOGGER.addHandler(logging.FileHandler("./.walkman.log"))
+LOGGER.addHandler(logging.FileHandler(f"./.{NAME}.log"))
 LOGGER.setLevel(logging.INFO)
 
 MODULE_PACKAGE_NAME = "walkman_modules"
