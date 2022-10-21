@@ -1,7 +1,9 @@
+import unittest
+
 import walkman
 
 
-class CueTest(walkman.unit_tests.WalkmanTestCase):
+class CueTest(walkman.unit_tests.WalkmanTestCase, unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.module_container = walkman.ModuleContainer(

@@ -2,7 +2,6 @@ import abc
 import math
 import inspect
 import typing
-import unittest
 
 import pyo
 
@@ -20,7 +19,7 @@ class SineAudioObject(walkman.PyoObjectMixin):
         return self._pyo_object
 
 
-class WalkmanTestCase(unittest.TestCase):
+class WalkmanTestCase(object):
     server_args: typing.Tuple[typing.Any, ...] = tuple([])
     # XXX: buffer size is set to an extremely low value, to
     # ensure tests give precise results. If we use
@@ -184,7 +183,7 @@ class ModuleTestCase(WalkmanTestCase, abc.ABC):
             )
         )
 
-        self.assertTrue(self.is_pyo_object_silent(module_instance.pyo_object)) 
+        self.assertTrue(self.is_pyo_object_silent(module_instance.pyo_object))
 
     def test_initialise_basic(self):
         """Ensure there are no errors when calling initialise method."""

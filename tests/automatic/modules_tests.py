@@ -1,11 +1,12 @@
 import typing
+import unittest
 
 import pyo
 
 import walkman
 
 
-class ModuleContainerTest(walkman.unit_tests.WalkmanTestCase):
+class ModuleContainerTest(walkman.unit_tests.WalkmanTestCase, unittest.TestCase):
     def test_get_module_name_to_module_class_dict(self):
         module_name_to_module_class_dict = {}
         for module_name in walkman.modules.buildins.__all__:
@@ -35,7 +36,7 @@ class ModuleContainerTest(walkman.unit_tests.WalkmanTestCase):
         )
 
 
-class ModuleTest(walkman.unit_tests.ModuleWithFaderTestCase):
+class ModuleTest(walkman.unit_tests.ModuleWithFaderTestCase, unittest.TestCase):
     def setUp(self):
         super().setUp()
 
@@ -234,7 +235,7 @@ class ModuleTest(walkman.unit_tests.ModuleWithFaderTestCase):
         self.assertEqual(module_instance.audio_input.sine.freq, frequency)
 
 
-class ParameterTest(walkman.unit_tests.ModuleTestCase):
+class ParameterTest(walkman.unit_tests.ModuleTestCase, unittest.TestCase):
     def get_module_class(self) -> typing.Type[walkman.Module]:
         return walkman.Parameter
 
@@ -268,12 +269,12 @@ class ParameterTest(walkman.unit_tests.ModuleTestCase):
 #         return walkman.MidiControlInput
 
 
-class SineTest(walkman.unit_tests.ModuleTestCase):
+class SineTest(walkman.unit_tests.ModuleTestCase, unittest.TestCase):
     def get_module_class(self) -> typing.Type[walkman.Module]:
         return walkman.Sine
 
 
-class AmplificationTest(walkman.unit_tests.ModuleTestCase):
+class AmplificationTest(walkman.unit_tests.ModuleTestCase, unittest.TestCase):
     def get_module_class(self) -> typing.Type[walkman.Module]:
         class AmplificationForTest(
             walkman.Amplification,
@@ -284,7 +285,7 @@ class AmplificationTest(walkman.unit_tests.ModuleTestCase):
         return AmplificationForTest
 
 
-class MixerTest(walkman.unit_tests.ModuleTestCase):
+class MixerTest(walkman.unit_tests.ModuleTestCase, unittest.TestCase):
     def get_module_class(self) -> typing.Type[walkman.Module]:
         class MixerForTest(
             walkman.Mixer, audio_input_0=walkman.AutoSetup(walkman.Sine)
@@ -294,7 +295,7 @@ class MixerTest(walkman.unit_tests.ModuleTestCase):
         return MixerForTest
 
 
-class FilterTest(walkman.unit_tests.ModuleTestCase):
+class FilterTest(walkman.unit_tests.ModuleTestCase, unittest.TestCase):
     def get_module_class(self) -> typing.Type[walkman.Module]:
         class FilterForTest(
             walkman.Filter,
@@ -305,7 +306,7 @@ class FilterTest(walkman.unit_tests.ModuleTestCase):
         return FilterForTest
 
 
-class ConvolutionReverbTest(walkman.unit_tests.ModuleTestCase):
+class ConvolutionReverbTest(walkman.unit_tests.ModuleTestCase, unittest.TestCase):
     def get_module_class(self) -> typing.Type[walkman.Module]:
         class ConvolutionReverbForTest(
             walkman.ConvolutionReverb,
@@ -327,7 +328,7 @@ class ConvolutionReverbTest(walkman.unit_tests.ModuleTestCase):
         )
 
 
-class WaveguideReverbTest(walkman.unit_tests.ModuleTestCase):
+class WaveguideReverbTest(walkman.unit_tests.ModuleTestCase, unittest.TestCase):
     def get_module_class(self) -> typing.Type[walkman.Module]:
         class WaveguideReverbForTest(
             walkman.WaveguideReverb,
@@ -338,7 +339,9 @@ class WaveguideReverbTest(walkman.unit_tests.ModuleTestCase):
         return WaveguideReverbForTest
 
 
-class ButterworthHighpassFilterTest(walkman.unit_tests.ModuleTestCase):
+class ButterworthHighpassFilterTest(
+    walkman.unit_tests.ModuleTestCase, unittest.TestCase
+):
     def get_module_class(self) -> typing.Type[walkman.Module]:
         class ButterworthHighpassFilterForTest(
             walkman.ButterworthHighpassFilter,
@@ -349,7 +352,9 @@ class ButterworthHighpassFilterTest(walkman.unit_tests.ModuleTestCase):
         return ButterworthHighpassFilterForTest
 
 
-class ButterworthLowpassFilterTest(walkman.unit_tests.ModuleTestCase):
+class ButterworthLowpassFilterTest(
+    walkman.unit_tests.ModuleTestCase, unittest.TestCase
+):
     def get_module_class(self) -> typing.Type[walkman.Module]:
         class ButterworthLowpassFilterForTest(
             walkman.ButterworthLowpassFilter,
@@ -360,7 +365,7 @@ class ButterworthLowpassFilterTest(walkman.unit_tests.ModuleTestCase):
         return ButterworthLowpassFilterForTest
 
 
-class EqualizerTest(walkman.unit_tests.ModuleTestCase):
+class EqualizerTest(walkman.unit_tests.ModuleTestCase, unittest.TestCase):
     def get_module_class(self) -> typing.Type[walkman.Module]:
         class EqualizerForTest(
             walkman.Equalizer,

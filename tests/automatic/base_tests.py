@@ -1,11 +1,13 @@
 """Test walkman unit test utilities"""
 
+import unittest
+
 import pyo
 
 import walkman
 
 
-class BaseTest(walkman.unit_tests.WalkmanTestCase):
+class BaseTest(walkman.unit_tests.WalkmanTestCase, unittest.TestCase):
     def test_sine_audio_object(self):
         sine_audio_object = walkman.unit_tests.SineAudioObject()
         sine_audio_object.pyo_object.play()
