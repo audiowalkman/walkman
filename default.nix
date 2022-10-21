@@ -40,8 +40,8 @@ in
     src = fetchFromGitHub {
       owner = "audiowalkman";
       repo = "walkman";
-      rev = "f30b3ea9296a584f8ba551c2f52ec74a5c804bfd";
-      sha256 = "sha256-ipIHy1wvXAkOhlDj8siQycfr2vJrUqKIWEatzQL13H4=";
+      rev = "9d80de2a9a7dff0cbff2b0826b75d6052214e70b";
+      sha256 = "sha256-ZObw3nW8v0M3Tnv78pQzt0ZVerGSqgi6DVWk6eJ+nQo=";
     };
     propagatedBuildInputs = [ 
       pyo
@@ -50,5 +50,5 @@ in
       python39Packages.tomli
       python39Packages.jinja2
     ];
-    doCheck = false;
+    doCheck = true;
   }
