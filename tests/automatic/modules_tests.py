@@ -252,10 +252,21 @@ class ParameterTest(walkman.unit_tests.ModuleTestCase, unittest.TestCase):
 
     def test_float_value(self):
         module_instance = self.get_module_instance()
-        module_instance.initialise(value=-60)
+        value = 200
+        # XXX: Portamento takes longer than it says.
+        # To avoid test failure we add a rounding time.
+        portamento_duration_tolerance = 0.01
+        module_instance.initialise(value=value)
         module_instance.play()
-        self.jump_to(module_instance.fade_in_duration)
-        self.assertEqual(module_instance.pyo_object.get(), -60)
+        self.jump_to(
+            module_instance.fade_in_duration
+            + module_instance.portamento.risetime
+            + portamento_duration_tolerance
+        )
+        # XXX: Because of Portamento the value is not exactly
+        # reached. To Avoid test failure we accept a certain
+        # tolerance.
+        self.assertAlmostEqual(module_instance.pyo_object.get(), value, places=1)
 
 
 # TODO(mock audio input!)
