@@ -1,17 +1,10 @@
-import logging
+from . import logging as walkman_logging
 
 NAME = "walkman"
 """Software name"""
 
-# WARNINGS and LOGGINGS should be caught by the same handlers.
-logging.captureWarnings(True)
-
-LOGGER = logging.getLogger("py.warnings")
+LOGGER = walkman_logging.get_logger(NAME)
 """Global logger"""
-
-LOGGER.addHandler(logging.StreamHandler())
-LOGGER.addHandler(logging.FileHandler(f"./.{NAME}.log"))
-LOGGER.setLevel(logging.INFO)
 
 MODULE_PACKAGE_NAME = "walkman_modules"
 

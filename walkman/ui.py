@@ -296,6 +296,11 @@ class TitleBar(SimpleUIElement):
         super().__init__(*args, pysimple_gui_class=sg.Titlebar, **kwargs)
 
 
+class Output(SimpleUIElement):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, pysimple_gui_class=sg.Output, **kwargs)
+
+
 class Slider(SimpleUIElement):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, pysimple_gui_class=sg.Slider, **kwargs)
@@ -338,6 +343,15 @@ class Debug(UIElement):
         sg.show_debugger_window()
 
 
+class Logger(Output):
+    def __init__(self, *args, **kwargs):
+        super().__init__(
+            *args,
+            element_kwargs={"size": (120, 20)},
+            **kwargs,
+        )
+
+
 class WalkmanMenu(Menu):
     def __init__(self, backend: walkman.Backend, *args, **kwargs):
         super().__init__(
@@ -349,7 +363,7 @@ class WalkmanMenu(Menu):
                         f"&{CHANNEL_TEST_KEY}",
                         [ROTATION_CHANNEL_TEST_KEY, "Launch individual channel test"],
                     ],
-                    [f"&{HELP_KEY}", [f"&{ABOUT_KEY}", DEBUG_KEY]],
+                    [f"&{HELP_KEY}", [ABOUT_KEY, DEBUG_KEY]],
                 ],
             ),
             **kwargs,
@@ -664,6 +678,33 @@ class CueControl(NestedUIElement):
         super().__init__(backend, ui_element_sequence)
 
 
+class LoggerWindow(NestedUIElement):
+    def __init__(
+        self,
+        backend,
+    ):
+        self.logger_text = FrozenText(
+            backend, element_kwargs={"text": "Logger", "font": DEFAULT_FONT.scale(1)}
+        )
+        self.logger = Logger(backend)
+        ui_element_sequence = (
+            self.logger_text,
+            self.logger,
+        )
+
+        walkman.constants.LOGGER.window_logger_handler.logger_window = self.logger.gui_element
+
+        super().__init__(backend, ui_element_sequence)
+
+    @functools.cached_property
+    def gui_element(self) -> list:
+        return [
+            [self.logger_text.gui_element],
+            self.logger.gui_element,
+        ]
+
+
+
 class Walkman(NestedUIElement):
     def __init__(
         self,
@@ -674,6 +715,7 @@ class Walkman(NestedUIElement):
         self.audio_rotation_test = AudioRotationTest(backend)
         self.cue_control = CueControl(backend)
         self.debug = Debug(backend)
+        self.logger_window = LoggerWindow(backend)
 
         ui_element_sequence = (
             self.cue_control,
@@ -681,6 +723,7 @@ class Walkman(NestedUIElement):
             self.about_text,
             self.audio_rotation_test,
             self.debug,
+            self.logger_window,
         )
 
         super().__init__(backend, ui_element_sequence)
@@ -691,6 +734,7 @@ class Walkman(NestedUIElement):
             [self.menu.gui_element],
             self.cue_control.gui_element,
             self.about_text.gui_element,
+            self.logger_window.gui_element,
         ]
 
 
@@ -842,6 +886,7 @@ class GUI(NestedWindow):
     def before_loop(self):
         super().before_loop()
         self.backend.audio_host.play()
+        walkman.constants.LOGGER.window_logger_handler.update_output()
 
     def after_loop(self):
         super().after_loop()
