@@ -31,6 +31,8 @@ Alternatively you can use [Nix](https://nixos.org/) to install walkman.
 ## Configuration file
 
 ```
+# ./my_composition.toml.j2
+
 [configure]
 name = string                                                       (default to "Project")
 logging_level = "info" | "error" | "warning" | "debug" | "notset"   (default to "info")
@@ -50,7 +52,7 @@ channel_count = integer                                             (default to 
 ## Usage
 
 ```bash
-walkman my_composition.toml
+walkman my_composition.toml.j2
 ```
 
 ## Tests
