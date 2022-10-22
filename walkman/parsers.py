@@ -1,3 +1,4 @@
+import logging
 import typing
 import warnings
 
@@ -8,11 +9,21 @@ import walkman
 
 CONFIGURE_KEY = "configure"
 CONFIGURE_NAME_KEY = "name"
+CONFIGURE_LOGGING_LEVEL_KEY = "logging_level"
 CONFIGURE_AUDIO_KEY = "audio"
 CONFIGURE_AUDIO_CHANNEL_COUNT_KEY = "channel_count"
 CONFIGURE_MODULE_KEY = "module"
 
 CUE_KEY = "cue"
+
+
+LOGGING_LEVEL_NAME_TO_LOGGING_LEVEL = {
+    "notset": logging.NOTSET,
+    "error": logging.ERROR,
+    "warning": logging.WARNING,
+    "info": logging.INFO,
+    "debug": logging.DEBUG,
+}
 
 
 def pop_from_dict(dict_to_pop_from: dict, name: str, fallback_value: typing.Any = None):
@@ -75,8 +86,12 @@ def configure_block_to_global_state_object_tuple(
     configure_block: dict,
 ) -> typing.Tuple[str, walkman.AudioHost, walkman.ModuleContainer]:
     name = pop_from_dict(configure_block, CONFIGURE_NAME_KEY, "Project")
+    logging_level = pop_from_dict(configure_block, CONFIGURE_LOGGING_LEVEL_KEY, "info")
     audio_block = pop_from_dict(configure_block, CONFIGURE_AUDIO_KEY, {})
     module_block = pop_from_dict(configure_block, CONFIGURE_MODULE_KEY, {})
+
+    walkman.constants.LOGGER.info(f"Set logging level to '{logging_level.upper()}'.")
+    walkman.constants.LOGGER.setLevel(LOGGING_LEVEL_NAME_TO_LOGGING_LEVEL[logging_level])
 
     warn_not_used_configuration_content(configure_block, "configure")
 
@@ -159,7 +174,7 @@ def jinja2_file_path_to_backend(jinja2_file_path: str) -> walkman.Backend:
         toml_file.write(toml_str)
     walkman.constants.LOGGER.info(
         "WALKMAN converted jinja2 template to toml file"
-        f"\n\nPlease check '{toml_file_path}' "
+        f"\nPlease check '{toml_file_path}' "
         "for converted file.\n"
     )
     return toml_str_to_backend(toml_str)
