@@ -596,7 +596,7 @@ class ModuleContainer(
                         is_send_to_physical_output := output_module.send_to_physical_output
                     ):
                         break
-                if not is_send_to_physical_output:
+                if not is_send_to_physical_output and not isinstance(module, walkman.Empty):
                     warnings.warn(NoPhysicalOutputWarning(module))
 
     def prepare_module(self, module_instance: Module):
