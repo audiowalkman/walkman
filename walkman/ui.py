@@ -1,5 +1,7 @@
 """Setup user interface for walkman"""
 
+from __future__ import annotations
+
 import abc
 import dataclasses
 import datetime
@@ -12,6 +14,24 @@ import warnings
 import PySimpleGUI as sg
 
 import walkman
+
+
+DEFAULT_FONT_TYPE = "DejaVuSansMono"
+DEFAULT_FONT_SIZE = 25
+
+
+class Font(str):
+    def __new__(cls, font_type: str, font_size: int):
+        font = str.__new__(cls, f"{font_type} {font_size}")
+        font.font_type = font_type
+        font.font_size = font_size
+        return font
+
+    def scale(self, percentage: float) -> Font:
+        return Font(self.font_type, int(self.font_size * percentage))
+
+
+DEFAULT_FONT = Font(DEFAULT_FONT_TYPE, DEFAULT_FONT_SIZE)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -162,7 +182,7 @@ class StopWatch(UIElement):
 
     @functools.cached_property
     def gui_element(self) -> typing.Union[list, sg.Element]:
-        return sg.Text(self._get_update_string())
+        return sg.Text(self._get_update_string(), font=DEFAULT_FONT)
 
     def start(self):
         if self._last_time is not None:
@@ -194,7 +214,6 @@ class StopWatch(UIElement):
         self.update()
 
 
-
 class Button(SimpleUIElement):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, pysimple_gui_class=sg.Button, **kwargs)
@@ -224,7 +243,7 @@ class JumpToTimeButton(Button):
         super().__init__(
             *args,
             key_tuple=(self.key,),
-            element_kwargs={"button_text": "JUMP TO"},
+            element_kwargs={"button_text": "JUMP TO", "font": DEFAULT_FONT},
             **kwargs,
         )
 
@@ -287,6 +306,7 @@ class Title(TitleBar):
         element_kwargs = {
             "title": f"{walkman.constants.NAME}: {backend.name}",
             "icon": walkman.constants.ICON,
+            "font": DEFAULT_FONT,
         }
         super().__init__(backend, *args, element_kwargs=element_kwargs, **kwargs)
 
@@ -294,61 +314,28 @@ class Title(TitleBar):
 class Menu(SimpleUIElement):
     sg.MENU_SHORTCUT_CHARACTER = "&"
 
-    # Please see https://github.com/PySimpleGUI/PySimpleGUI/issues/4072#issuecomment-803355769
-    @staticmethod
-    def Menubar(
-        menu_definition,
-        text_color: str = "black",
-        background_color: str = "white",
-        pad=(0, 0),
-    ):
-        """
-        A User Defined element that simulates a Menu element by using ButtonMenu elements
-
-        :param menu_definition: A standard PySimpleGUI menu definition
-        :type menu_definition: List[List[Tuple[str, List[str]]]
-        :param text_color: color for the menubar's text
-        :type text_color:
-        :param background_color: color for the menubar's background
-        :type background_color:
-        :param pad: Amount of padding around each menu entry
-        :type pad:
-        :return: A column element that has a row of ButtonMenu buttons
-        :rtype: sg.Column
-        """
-        row = []
-        for menu in menu_definition:
-            text = menu[0]
-            if text.__contains__(sg.MENU_SHORTCUT_CHARACTER):
-                text = text.replace(sg.MENU_SHORTCUT_CHARACTER, "")
-            if text.startswith(sg.MENU_DISABLED_CHARACTER):
-                disabled = True
-                text = text[len(sg.MENU_DISABLED_CHARACTER) :]
-            else:
-                disabled = False
-            row += [
-                sg.ButtonMenu(
-                    text,
-                    menu,
-                    border_width=0,
-                    button_color=f"{text_color} on {background_color}",
-                    key=text,
-                    pad=pad,
-                    disabled=disabled,
-                )
-            ]
-
-        return sg.Column(
-            [row], background_color=background_color, pad=(0, 0), expand_x=True
-        )
-
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, pysimple_gui_class=self.Menubar, **kwargs)
+        super().__init__(
+            *args,
+            pysimple_gui_class=sg.Menu,
+            element_kwargs={"font": DEFAULT_FONT.scale(0.8)},
+            **kwargs,
+        )
 
 
 HELP_KEY = "Help"
+ABOUT_KEY = "About"
+DEBUG_KEY = "Debug"
 CHANNEL_TEST_KEY = "Channel test"
 ROTATION_CHANNEL_TEST_KEY = "Launch rotation test"
+
+
+class Debug(UIElement):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, key_tuple=(DEBUG_KEY,), **kwargs)
+
+    def handle_event(self, _: str, value_dict: dict):
+        sg.show_debugger_window()
 
 
 class WalkmanMenu(Menu):
@@ -362,7 +349,7 @@ class WalkmanMenu(Menu):
                         f"&{CHANNEL_TEST_KEY}",
                         [ROTATION_CHANNEL_TEST_KEY, "Launch individual channel test"],
                     ],
-                    [f"&{HELP_KEY}", "&About..."],
+                    [f"&{HELP_KEY}", [f"&{ABOUT_KEY}", DEBUG_KEY]],
                 ],
             ),
             **kwargs,
@@ -387,7 +374,8 @@ class AboutText(Popup):
             backend,
             *args,
             element_args=element_args,
-            key_tuple=(HELP_KEY,),
+            element_kwargs={"font": DEFAULT_FONT.scale(0.7)},
+            key_tuple=(ABOUT_KEY,),
             **kwargs,
         )
 
@@ -396,7 +384,11 @@ class JumpToTimeInput(UIElement):
     @functools.cached_property
     def gui_element(self) -> typing.Union[list, sg.Element]:
         return sg.InputText(
-            key=self.key_tuple[0], default_text="0", enable_events=False, size=(4, 1)
+            key=self.key_tuple[0],
+            default_text="0",
+            enable_events=False,
+            size=(4 * 3, 1 * 3),
+            font=DEFAULT_FONT,
         )
 
     def handle_event(self, _: str, __: dict):
@@ -420,7 +412,10 @@ class StartStopButton(Button):
         self,
         *args,
         key_tuple=("start_stop",),
-        element_kwargs={"button_text": "START // STOP"},
+        element_kwargs={
+            "button_text": "START // STOP",
+            "font": DEFAULT_FONT,
+        },
         **kwargs,
     ):
         super().__init__(
@@ -507,6 +502,7 @@ class VolumeSlider(Slider):
             *args,
             element_kwargs={
                 "default_value": default_value,
+                "font": DEFAULT_FONT,
                 "key": self.key,
                 "range": volume_range,
                 "resolution": resolution,
@@ -559,6 +555,7 @@ class SelectCueMenu(UIElement):
             readonly=True,
             enable_events=True,
             key=self.combo_key,
+            font=DEFAULT_FONT,
         )
 
     def handle_event(self, event: str, value_dict: dict):
@@ -606,9 +603,13 @@ class JumpToTimeControl(NestedUIElement):
         ui_element_sequence = (
             self.jump_to_time_button,
             self.jump_to_time_input_minutes,
-            FrozenText(backend, element_kwargs={"text": "MIN"}),
+            FrozenText(
+                backend, element_kwargs={"text": "MIN", "font": DEFAULT_FONT.scale(0.5)}
+            ),
             self.jump_to_time_input_seconds,
-            FrozenText(backend, element_kwargs={"text": "SEC"}),
+            FrozenText(
+                backend, element_kwargs={"text": "SEC", "font": DEFAULT_FONT.scale(0.5)}
+            ),
         )
 
         super().__init__(backend, ui_element_sequence)
@@ -672,12 +673,14 @@ class Walkman(NestedUIElement):
         self.about_text = AboutText(backend)
         self.audio_rotation_test = AudioRotationTest(backend)
         self.cue_control = CueControl(backend)
+        self.debug = Debug(backend)
 
         ui_element_sequence = (
             self.cue_control,
             self.menu,
             self.about_text,
             self.audio_rotation_test,
+            self.debug,
         )
 
         super().__init__(backend, ui_element_sequence)
@@ -704,7 +707,6 @@ class NestedWindow(NestedUIElement):
         window_kwargs.update(
             {
                 "resizable": True,
-                "scaling": 3,
                 "return_keyboard_events": True,
             }
         )
@@ -714,7 +716,7 @@ class NestedWindow(NestedUIElement):
         self.window_class = window_class
 
     def set_window(self):
-        # Initialisation of windows have to be dynamic (so
+        # Initialisation of windows has to be dynamic (so
         # when closing and reopening windows we don't use the same
         # layout, which is prohibited).
         self.window = self.window_class(
@@ -786,7 +788,7 @@ class AudioRotationTest(NestedWindow):
             backend,
             ui_element_tuple,
             window_class=ModalWindow,
-            key_tuple=(CHANNEL_TEST_KEY,),
+            key_tuple=(ROTATION_CHANNEL_TEST_KEY,),
             window_kwargs={"finalize": True},
             **kwargs,
         )
@@ -807,10 +809,7 @@ class AudioRotationTest(NestedWindow):
         del self.audio_rotation_test
 
     def handle_event(self, event: str, value_dict: dict):
-        if (
-            value_dict
-            and value_dict.get(CHANNEL_TEST_KEY, None) == ROTATION_CHANNEL_TEST_KEY
-        ):
+        if event == ROTATION_CHANNEL_TEST_KEY:
             self.loop()
         else:
             super().handle_event(event, value_dict)
