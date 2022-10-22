@@ -9,6 +9,8 @@ Walkman is a minimalistic, robust software to trigger (audio) cues in performanc
 It uses [pyo](http://ajaxsoundstudio.com/software/pyo/) as its backend and [pysimplegui](https://pypi.org/project/PySimpleGUI/) as its frontend.
 It can be configured by [toml](https://toml.io/en/) files.
 
+![walkman screenshot](screenshot.png)
+
 ## Rationale
 
 Live-electronic setups tend to be messy, difficult to maintain and difficult to test.
