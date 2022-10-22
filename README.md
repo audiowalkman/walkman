@@ -34,15 +34,15 @@ Alternatively you can use [Nix](https://nixos.org/) to install walkman.
 # ./my_composition.toml.j2
 
 [configure]
-name = string                                                       (default to "Project")
-logging_level = "info" | "error" | "warning" | "debug" | "notset"   (default to "info")
+name            = string                                              (default to "Project")
+logging_level   = "info" | "error" | "warning" | "debug" | "notset"   (default to "info")
 
 [configure.audio]
-audio = string                                                      (default to "jack")
-midi = string                                                       (default to "jack")
-sampling_rate = integer                                             (default to 44100)
-buffer_size = integer                                               (default to 1024)
-channel_count = integer                                             (default to 2)
+audio           = string                                              (default to "jack")
+midi            = string                                              (default to "jack")
+sampling_rate   = integer                                             (default to 44100)
+buffer_size     = integer                                             (default to 1024)
+channel_count   = integer                                             (default to 2)
 
 [configure.module.MODULE_NAME.REPLICATION_KEY]
 
