@@ -31,48 +31,20 @@ Alternatively you can use [Nix](https://nixos.org/) to install walkman.
 ## Configuration file
 
 ```toml
-# my_composition.toml
-
-# ##    General configurations  ## #
-
 [configure]
-name = "my composition"
+name = string                                                       (default to "Project")
+logging_level = "info" | "error" | "warning" | "debug" | "notset"   (default to "info")
 
 [configure.audio]
-sampling_rate = 44100
+audio = string                                                      (default to "jack")
+midi = string                                                       (default to "jack")
+sampling_rate = integer                                             (default to 44100)
+buffer_size = integer                                               (default to 1024)
+channel_count = integer                                             (default to 2)
 
+[configure.module.MODULE_NAME.REPLICATION_KEY]
 
-[configure.module.audio_input.0]
-input_channel_index = 1
-
-[configure.module.sound_file_player]
-replication_count = 1
-
-[configure.module.sound_file_player.0]
-# We can set values passed to '__init__'
-auto_stop = false
-
-# And we can also override the default values of
-# 'initialize' method.
-[configure.module.sound_file_player.0.default_dict.decibel]
-value = -6
-midi_control_index = 0
-midi_range = [-120, 0]
-
-# ##    Cues                  ## #
-
-[cue.1.sound_file_player.0]
-path = "jungle_rain.wav"
-decibel = -12
-loop = true
-
-[cue.2]
-sound_file = false
-
-[cue.2.harmonizer.0]
-# Move in 10 seconds from decibel -20 to decibel 0
-decibel = [[0, -20], [10, 0]]
-factor = 4
+[cue.CUE_NAME.MODULE_NAME.REPLICATION_KEY]
 ```
 
 ## Usage
