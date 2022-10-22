@@ -30,7 +30,7 @@ Alternatively you can use [Nix](https://nixos.org/) to install walkman.
 
 ## Configuration file
 
-```toml
+```
 [configure]
 name = string                                                       (default to "Project")
 logging_level = "info" | "error" | "warning" | "debug" | "notset"   (default to "info")
