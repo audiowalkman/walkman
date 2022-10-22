@@ -173,8 +173,8 @@ def jinja2_file_path_to_backend(jinja2_file_path: str) -> walkman.Backend:
     with open(toml_file_path, "w") as toml_file:
         toml_file.write(toml_str)
     walkman.constants.LOGGER.info(
-        "WALKMAN converted jinja2 template to toml file"
-        f"\nPlease check '{toml_file_path}' "
+        "WALKMAN converted jinja2 template to toml file. "
+        f"Please check '{toml_file_path}' "
         "for converted file.\n"
     )
     return toml_str_to_backend(toml_str)
