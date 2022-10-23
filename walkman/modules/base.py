@@ -86,6 +86,10 @@ class Catch(ModuleInput):
         parent: typing.Optional[Module] = None,
         module_input_name: str = "",
     ) -> Module:
+
+        if self.module_instance_name == str(parent):
+            raise ModuleHasItselfAsAnInputError(self.module_instance_name)
+
         try:
             return module_container.get_module_by_name(self.module_instance_name)
         except (KeyError, InvalidModuleInstanceNameError):
@@ -126,11 +130,15 @@ class AutoSetup(ModuleInput):
                 "replication_key"
             ] = replication_key = self.get_replication_key(parent, module_input_name)
         finally:
-            module_instnce_name = (
+            module_instance_name = (
                 f"{self.module_class.get_class_name()}.{replication_key}"
             )
+
+            if module_instance_name == str(parent):
+                raise ModuleHasItselfAsAnInputError(module_instance_name)
+
             try:
-                return module_container.get_module_by_name(module_instnce_name)
+                return module_container.get_module_by_name(module_instance_name)
             except (KeyError, InvalidModuleInstanceNameError):
                 pass
 
@@ -161,6 +169,19 @@ class MissingInitializationArgumentsWarning(RuntimeWarning):
             " syntax or with the [cue.cue_name.module.name] syntax)."
             " WALKMAN skipped the initialization of the given module."
             f" The original error is:\n{error_string}."
+        )
+
+
+class InvalidModuleInputError(Exception):
+    """Raise for invalid audio input argument of a module."""
+
+
+class ModuleHasItselfAsAnInputError(InvalidModuleInputError):
+    def __init__(self, module_instance_name: str):
+        super().__init__(
+            f"Module '{module_instance_name}' has invalid module "
+            f"input '{module_instance_name}'! A module can not have "
+            "itself as an input."
         )
 
 
@@ -596,7 +617,9 @@ class ModuleContainer(
                         is_send_to_physical_output := output_module.send_to_physical_output
                     ):
                         break
-                if not is_send_to_physical_output and not isinstance(module, walkman.Empty):
+                if not is_send_to_physical_output and not isinstance(
+                    module, walkman.Empty
+                ):
                     warnings.warn(NoPhysicalOutputWarning(module))
 
     def prepare_module(self, module_instance: Module):
