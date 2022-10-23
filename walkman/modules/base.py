@@ -629,12 +629,15 @@ class ModuleContainer(
                 local_module_instance.assign_module_inputs(self)
                 assign_module_inputs(local_module_instance)
 
+        def setup_module_inputs_pyo_object(module_instance: Module):
+            for input_module_instance in module_instance.module_input_chain:
+                setup_module_inputs_pyo_object(input_module_instance)
+                input_module_instance.setup_pyo_object()
+
         module_instance.assign_module_inputs(self)
 
         assign_module_inputs(module_instance)
-
-        for input_module_instance in module_instance.module_input_chain:
-            input_module_instance.setup_pyo_object()
+        setup_module_inputs_pyo_object(module_instance)
 
         module_instance.setup_pyo_object()
 
