@@ -57,6 +57,12 @@ class WalkmanTestCase(object):
     def is_pyo_object_silent(self, *args, **kwargs) -> bool:
         return not self.is_pyo_object_not_silent(*args, **kwargs)
 
+    def assertIsSilent(self, *args, **kwargs):
+        self.assertTrue(self.is_pyo_object_silent(*args, **kwargs))
+
+    def assertIsNotSilent(self, *args, **kwargs):
+        self.assertTrue(self.is_pyo_object_not_silent(*args, **kwargs))
+
     def setup_module_instance(
         self,
         module_instance: walkman.Module,
@@ -124,10 +130,10 @@ class ModuleTestCase(WalkmanTestCase, abc.ABC):
 
     def test_play(self):
         module_instance = self.get_module_instance()
-        self.assertTrue(self.is_pyo_object_silent(module_instance.pyo_object))
+        self.assertIsSilent(module_instance.pyo_object)
 
         self.play_module_instance(module_instance)
-        self.assertFalse(self.is_pyo_object_silent(module_instance.pyo_object))
+        self.assertIsNotSilent(module_instance.pyo_object)
 
         for pyo_object in module_instance.internal_pyo_object_list:
             self.assertTrue(pyo_object.isPlaying())
@@ -138,43 +144,43 @@ class ModuleTestCase(WalkmanTestCase, abc.ABC):
         self.play_module_instance(module_instance, delay=4)
         # For 4 seconds it will still be silent
         self.assertFalse(module_instance.pyo_object.isPlaying())
-        self.assertTrue(self.is_pyo_object_silent(module_instance.pyo_object, 4))
+        self.assertIsSilent(module_instance.pyo_object, 4)
 
         self.assertTrue(module_instance.pyo_object.isPlaying())
-        self.assertFalse(self.is_pyo_object_silent(module_instance.pyo_object, 4))
+        self.assertIsNotSilent(module_instance.pyo_object, 4)
 
     def test_play_with_duration(self):
         module_instance = self.get_module_instance()
 
         self.play_module_instance(module_instance, duration=4)
-        self.assertFalse(self.is_pyo_object_silent(module_instance.pyo_object, 4))
+        self.assertIsNotSilent(module_instance.pyo_object, 4)
 
-        self.assertTrue(self.is_pyo_object_silent(module_instance.pyo_object, 2))
+        self.assertIsSilent(module_instance.pyo_object, 2)
 
     def test_stop(self):
         module_instance = self.get_module_instance()
 
         self.play_module_instance(module_instance)
-        self.assertFalse(self.is_pyo_object_silent(module_instance.pyo_object))
+        self.assertIsNotSilent(module_instance.pyo_object)
 
         self.stop_module_instance(
             module_instance,
         )
         self.jump_to(module_instance.fade_out_duration)
-        self.assertTrue(self.is_pyo_object_silent(module_instance.pyo_object))
+        self.assertIsSilent(module_instance.pyo_object)
 
         for pyo_object in module_instance.internal_pyo_object_list:
             # XXX: This doesn't work for mixer objects:
             #   SystemError: <class '_pyo.InputFader_base'> returned a result with an error set
             if not isinstance(pyo_object, pyo.Mixer):
-                self.assertTrue(self.is_pyo_object_silent(pyo_object))
+                self.assertIsSilent(pyo_object)
                 self.assertFalse(pyo_object.isPlaying())
 
     def test_stop_with_wait(self):
         module_instance = self.get_module_instance()
 
         self.play_module_instance(module_instance)
-        self.assertFalse(self.is_pyo_object_silent(module_instance.pyo_object))
+        self.assertIsNotSilent(module_instance.pyo_object)
 
         self.stop_module_instance(module_instance, wait=4)
         self.assertFalse(
@@ -183,7 +189,7 @@ class ModuleTestCase(WalkmanTestCase, abc.ABC):
             )
         )
 
-        self.assertTrue(self.is_pyo_object_silent(module_instance.pyo_object))
+        self.assertIsSilent(module_instance.pyo_object)
 
     def test_initialise_basic(self):
         """Ensure there are no errors when calling initialise method."""
@@ -246,7 +252,7 @@ class ModuleWithFaderTestCase(ModuleTestCase):
         module_instance = self.get_module_instance(fade_out_duration=10)
 
         self.play_module_instance(module_instance)
-        self.assertFalse(self.is_pyo_object_silent(module_instance.pyo_object))
+        self.assertIsNotSilent(module_instance.pyo_object)
 
         self.stop_module_instance(
             module_instance,
@@ -263,4 +269,4 @@ class ModuleWithFaderTestCase(ModuleTestCase):
             last_fader_sample = current_fader_sample
 
         self.assertFalse(module_instance.pyo_object.isPlaying())
-        self.assertTrue(self.is_pyo_object_silent(module_instance.pyo_object, 2))
+        self.assertIsSilent(module_instance.pyo_object, 2)
