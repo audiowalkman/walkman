@@ -5,12 +5,13 @@ import typing
 import uuid
 
 import pyo
+import PySimpleGUI as sg
 
 import walkman
 
 
 @dataclasses.dataclass
-class AudioTest(object):
+class AudioTest(walkman.CloseMixin):
     channel_count: int
     internal_pyo_object_list: typing.List[pyo.PyoObject] = dataclasses.field(
         default_factory=lambda: []
@@ -87,3 +88,24 @@ class AudioRotationTest(AudioTest):
     def stop(self):
         self.pattern.stop()
         self.noise.stop()
+
+
+class MidiInputTest(walkman.CloseMixin):
+    def __init__(self, output: sg.Output):
+        self.buffer = (
+            f"Midi input devices: {pyo.pm_get_output_devices()}\n"
+            f"Midi output devices: {pyo.pm_get_output_devices()}\n"
+        )
+        self.output = output
+        # XXX: pyo seems to auto-emit messages.
+        self.midi_control_scanner = pyo.CtlScan2(lambda *args, **kwargs: None).play()
+        self.update()
+
+    def update(self):
+        self.output.update(value=self.buffer)
+
+    def close(self):
+        self.midi_control_scanner.stop()
+
+        del self.midi_control_scanner
+        del self.buffer

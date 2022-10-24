@@ -331,8 +331,9 @@ class Menu(SimpleUIElement):
 HELP_KEY = "Help"
 ABOUT_KEY = "About"
 DEBUG_KEY = "Debug"
-CHANNEL_TEST_KEY = "Channel test"
+CHANNEL_TEST_KEY = "Test audio & midi"
 ROTATION_CHANNEL_TEST_KEY = "Launch rotation test"
+MIDI_INPUT_TEST_KEY = "Launch midi input test"
 
 
 class Debug(UIElement):
@@ -361,7 +362,11 @@ class WalkmanMenu(Menu):
                 [
                     [
                         f"&{CHANNEL_TEST_KEY}",
-                        [ROTATION_CHANNEL_TEST_KEY, "Launch individual channel test"],
+                        [
+                            ROTATION_CHANNEL_TEST_KEY,
+                            "Launch individual channel test",
+                            MIDI_INPUT_TEST_KEY,
+                        ],
                     ],
                     [f"&{HELP_KEY}", [ABOUT_KEY, DEBUG_KEY]],
                 ],
@@ -692,7 +697,9 @@ class LoggerWindow(NestedUIElement):
             self.logger,
         )
 
-        walkman.constants.LOGGER.window_logger_handler.logger_window = self.logger.gui_element
+        walkman.constants.LOGGER.window_logger_handler.logger_window = (
+            self.logger.gui_element
+        )
 
         super().__init__(backend, ui_element_sequence)
 
@@ -704,7 +711,6 @@ class LoggerWindow(NestedUIElement):
         ]
 
 
-
 class Walkman(NestedUIElement):
     def __init__(
         self,
@@ -713,6 +719,7 @@ class Walkman(NestedUIElement):
         self.menu = WalkmanMenu(backend)
         self.about_text = AboutText(backend)
         self.audio_rotation_test = AudioRotationTest(backend)
+        self.midi_input_test = MidiInputTest(backend)
         self.cue_control = CueControl(backend)
         self.debug = Debug(backend)
         self.logger_window = LoggerWindow(backend)
@@ -722,6 +729,7 @@ class Walkman(NestedUIElement):
             self.menu,
             self.about_text,
             self.audio_rotation_test,
+            self.midi_input_test,
             self.debug,
             self.logger_window,
         )
@@ -863,6 +871,54 @@ class AudioRotationTest(NestedWindow):
         return [
             [self.start_stop_button.gui_element],
             [self.volume_slider.gui_element],
+        ]
+
+
+class MidiInputTest(NestedWindow):
+    def __init__(self, backend: walkman.Backend, *args, **kwargs):
+        self.title = FrozenText(
+            backend,
+            element_args=("MIDI Input Test",),
+            element_kwargs={"font": DEFAULT_FONT},
+        )
+        self.midi_output = Output(
+            backend,
+            element_kwargs={"size": (120, 20)},
+        )
+        ui_element_tuple = (
+            self.title,
+            self.midi_output,
+        )
+        super().__init__(
+            backend,
+            ui_element_tuple,
+            window_class=ModalWindow,
+            key_tuple=(MIDI_INPUT_TEST_KEY,),
+            window_kwargs={"finalize": True},
+            **kwargs,
+        )
+        self.event_tuple = self.key_tuple
+
+    def before_loop(self):
+        super().before_loop()
+        self.midi_input_test = walkman.tests.MidiInputTest(self.midi_output.gui_element)
+
+    def after_loop(self):
+        super().after_loop()
+        self.midi_input_test.close()
+        del self.midi_input_test
+
+    def handle_event(self, event: str, value_dict: dict):
+        if event == MIDI_INPUT_TEST_KEY:
+            self.loop()
+        else:
+            super().handle_event(event, value_dict)
+
+    @property
+    def gui_element(self) -> list:
+        return [
+            [self.title.gui_element],
+            [self.midi_output.gui_element],
         ]
 
 
