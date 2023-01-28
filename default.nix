@@ -1,9 +1,9 @@
 with import <nixpkgs> {};
-with pkgs.python3Packages;
+with pkgs.python310Packages;
 
 let
 
-  pyo = pkgs.python39Packages.buildPythonPackage rec {
+  pyo = buildPythonPackage rec {
     name = "pyo";
     src = fetchFromGitHub {
       owner = "belangeo";
@@ -29,7 +29,7 @@ let
       libogg
       libvorbis
       # Other pyo dependencies
-      python39Packages.wxPython_4_1
+      python310Packages.wxPython_4_1
     ];
   };
 
@@ -40,15 +40,15 @@ in
     src = fetchFromGitHub {
       owner = "audiowalkman";
       repo = "walkman";
-      rev = "9d80de2a9a7dff0cbff2b0826b75d6052214e70b";
-      sha256 = "sha256-ZObw3nW8v0M3Tnv78pQzt0ZVerGSqgi6DVWk6eJ+nQo=";
+      rev = "76537be5b514f851593ed864bc263a503d20717b";
+      sha256 = "sha256-wC5kbhv2wVt7gtznceQngekTJ/WZ6vbc7HJV9wk2/0w=";
     };
-    propagatedBuildInputs = [ 
+    propagatedBuildInputs = with pkgs.python310Packages; [ 
       pyo
-      python39Packages.pysimplegui
-      python39Packages.click
-      python39Packages.tomli
-      python39Packages.jinja2
+      pysimplegui
+      click
+      tomli
+      jinja2
     ];
     doCheck = true;
   }
