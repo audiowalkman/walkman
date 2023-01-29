@@ -385,3 +385,25 @@ class EqualizerTest(walkman.unit_tests.ModuleTestCase, unittest.TestCase):
             pass
 
         return EqualizerForTest
+
+
+class AverageTest(walkman.unit_tests.ModuleTestCase, unittest.TestCase):
+    def get_module_class(self) -> typing.Type[walkman.Module]:
+        class AverageForTest(
+            walkman.Average,
+            audio_input=walkman.AutoSetup(walkman.Sine),
+        ):
+            pass
+
+        return AverageForTest
+
+
+class IRAverageTest(walkman.unit_tests.ModuleTestCase, unittest.TestCase):
+    def get_module_class(self) -> typing.Type[walkman.Module]:
+        class IRAverageForTest(
+            walkman.IRAverage,
+            audio_input=walkman.AutoSetup(walkman.Sine),
+        ):
+            pass
+
+        return IRAverageForTest

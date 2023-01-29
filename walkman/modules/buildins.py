@@ -28,6 +28,8 @@ __all__ = (
     "ButterworthLowpassFilter",
     "ButterworthHighpassFilter",
     "Equalizer",
+    "Average",
+    "IRAverage",
 )
 
 
@@ -665,3 +667,44 @@ class Equalizer(
     @functools.cached_property
     def _pyo_object(self) -> pyo.PyoObject:
         return self.equalizer
+
+
+class Average(
+    ModuleWithDecibel,
+    audio_input=base.Catch(walkman.constants.EMPTY_MODULE_INSTANCE_NAME),
+    size=base.AutoSetup(Value, module_kwargs={"value": 10}),
+):
+    def _setup_pyo_object(self):
+        super()._setup_pyo_object()
+        self.average = pyo.Average(
+            self.audio_input.pyo_object,
+            mul=self.amplitude_signal_to,
+            size=self.size.pyo_object_or_float,
+        ).stop()
+        self.internal_pyo_object_list.append(self.average)
+
+    @functools.cached_property
+    def _pyo_object(self) -> pyo.PyoObject:
+        return self.average
+
+
+class IRAverage(
+    ModuleWithDecibel,
+    audio_input=base.Catch(walkman.constants.EMPTY_MODULE_INSTANCE_NAME),
+):
+    def __init__(self, order: int = 256, **kwargs):
+        super().__init__(**kwargs)
+        self.order = order
+
+    def _setup_pyo_object(self):
+        super()._setup_pyo_object()
+        self.ir_average = pyo.IRAverage(
+            self.audio_input.pyo_object,
+            mul=self.amplitude_signal_to,
+            order=self.order,
+        ).stop()
+        self.internal_pyo_object_list.append(self.ir_average)
+
+    @functools.cached_property
+    def _pyo_object(self) -> pyo.PyoObject:
+        return self.ir_average
