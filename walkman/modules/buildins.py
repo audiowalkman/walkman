@@ -317,7 +317,7 @@ class Mixer(
     ModuleWithDecibel,
     **{
         f"{MixerAudioInputKeyPrefix}{index}": base.Catch(
-            walkman.constants.EMPTY_MODULE_INSTANCE_NAME, relevance=False
+            walkman.constants.EMPTY_MODULE_INSTANCE_NAME, implicit=False
         )
         for index in range(100)
     },

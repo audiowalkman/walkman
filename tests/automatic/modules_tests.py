@@ -60,7 +60,7 @@ class ModuleTest(walkman.unit_tests.ModuleWithFaderTestCase, unittest.TestCase):
         class FilterModule(
             walkman.ModuleWithFader,
             audio_input=walkman.AutoSetup(SineModule),
-            dummy_input=walkman.AutoSetup(SineModule, relevance=False),
+            dummy_input=walkman.AutoSetup(SineModule, implicit=False),
         ):
             def setup_pyo_object(self):
                 super().setup_pyo_object()
@@ -184,10 +184,10 @@ class ModuleTest(walkman.unit_tests.ModuleWithFaderTestCase, unittest.TestCase):
             ),
         )
 
-    def test_relevant_module_input_chain(self):
+    def test_implicit_module_input_chain(self):
         module_instance = self.get_module_instance(module_class=self.NestedFilterModule)
         self.assertEqual(
-            module_instance.relevant_module_input_chain,
+            module_instance.implicit_module_input_chain,
             (
                 module_instance.audio_input.audio_input,
                 module_instance.audio_input,
@@ -216,10 +216,10 @@ class ModuleTest(walkman.unit_tests.ModuleWithFaderTestCase, unittest.TestCase):
             ),
         )
 
-    def test_relevant_module_chain(self):
+    def test_implicit_module_chain(self):
         module_instance = self.get_module_instance(module_class=self.NestedFilterModule)
         self.assertEqual(
-            module_instance.audio_input.relevant_module_chain,
+            module_instance.audio_input.implicit_module_chain,
             (
                 module_instance.audio_input.audio_input,
                 module_instance,

@@ -38,9 +38,9 @@ class ModuleInput(abc.ABC):
 
     def __init__(
         self,
-        relevance: bool = True,
+        implicit: bool = True,
     ):
-        self.relevance = relevance
+        self.implicit = implicit
 
     def get_replication_key(
         self,
@@ -235,7 +235,7 @@ class Module(
                         pass
                     else:
                         module_input = Catch(
-                            module_instance_name, relevance=module_input.relevance
+                            module_instance_name, implicit=module_input.implicit
                         )
                         del kwargs[module_input_name]
                     finally:
@@ -425,17 +425,17 @@ class Module(
         return tuple(reversed(input_module_list))
 
     @functools.cached_property
-    def relevant_module_input_chain(self) -> typing.Tuple[Module, ...]:
-        """Get chain of relevant inputs from left to right (order matters!)"""
+    def implicit_module_input_chain(self) -> typing.Tuple[Module, ...]:
+        """Get chain of implicit inputs from left to right (order matters!)"""
 
         input_module_list = []
         for module_input_name, module_input in self.module_input_dict.items():
-            if module_input.relevance:
+            if module_input.implicit:
                 input_module = getattr(self, module_input_name)
                 if input_module not in input_module_list:
                     input_module_list.append(input_module)
                 for module_instance in reversed(
-                    input_module.relevant_module_input_chain
+                    input_module.implicit_module_input_chain
                 ):
                     if module_instance not in input_module_list:
                         input_module_list.append(module_instance)
@@ -447,7 +447,7 @@ class Module(
         for output_module in self.output_module_set:
             if output_module not in output_module_list:
                 output_module_list.append(output_module)
-            for module_instance in output_module.relevant_module_chain:
+            for module_instance in output_module.implicit_module_chain:
                 if (
                     module_instance not in output_module_list
                     and module_instance != self
@@ -464,8 +464,8 @@ class Module(
         return tuple(module_list)
 
     @functools.cached_property
-    def relevant_module_chain(self) -> typing.Tuple[Module, ...]:
-        module_list = list(self.relevant_module_input_chain)
+    def implicit_module_chain(self) -> typing.Tuple[Module, ...]:
+        module_list = list(self.implicit_module_input_chain)
         for module_instance in self.module_output_chain:
             if module_instance not in module_list:
                 module_list.append(module_instance)
