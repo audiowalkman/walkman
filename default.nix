@@ -50,5 +50,13 @@ in
       tomli
       jinja2
     ];
+    checkInputs = [
+      python310Packages.pytest
+    ];
     doCheck = true;
+    checkPhase = ''
+      runHook preCheck
+      pytest
+      runHook postCheck
+    '';
   }
