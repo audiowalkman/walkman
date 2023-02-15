@@ -119,6 +119,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
 
     @functools.cached_property
     def active_main_module_tuple(self) -> typing.Tuple[walkman.Module, ...]:
+        """All explicitly activated modules."""
         active_module_list = []
         for (
             module_name,
@@ -172,6 +173,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
 
     @functools.cached_property
     def active_dependency_module_tuple(self) -> typing.Tuple[walkman.Module, ...]:
+        """Dependency modules of explicitly activated modules."""
         active_dependency_module_list = []
         for (
             dependency_module_chain
@@ -183,6 +185,11 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
 
     @functools.cached_property
     def active_module_tuple(self) -> typing.Tuple[walkman.Module, ...]:
+        """All modules which are active during the given cue
+
+        (basically a summary of explicitly activated modules + their dependency
+        modules).
+        """
         active_module_list = []
         for module in (
             self.active_dependency_module_tuple + self.active_main_module_tuple
