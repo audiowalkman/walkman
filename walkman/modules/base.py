@@ -34,12 +34,16 @@ def override_default_kwargs(method_to_wrap: typing.Callable) -> typing.Callable:
 
 
 class ModuleInput(abc.ABC):
-    """Allocate an Module object as an input of another Module"""
+    """Allocate an Module object as an input of another Module
 
-    def __init__(
-        self,
-        implicit: bool = True,
-    ):
+    :param implicit: If implicit is `True` a module is activated if any module
+        in it's input or output chain is activated during the given cue. If
+        implicit is `False` a module is only activated if it is explicitly
+        activated in a given cue.
+    :type implicit: bool
+    """
+
+    def __init__(self, implicit: bool = True):
         self.implicit = implicit
 
     def get_replication_key(
