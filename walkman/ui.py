@@ -41,7 +41,7 @@ class UIElement(abc.ABC):
     keyboard_key_tuple: typing.Optional[str] = None
 
     @property
-    def gui_element(self) -> typing.Union[list, sg.Element]:
+    def gui_element(self) -> list | sg.Element:
         return []
 
     @abc.abstractmethod
@@ -49,7 +49,7 @@ class UIElement(abc.ABC):
         ...
 
     @functools.cached_property
-    def event_tuple(self) -> typing.Tuple[str, ...]:
+    def event_tuple(self) -> tuple[str, ...]:
         event_list = []
         if self.key_tuple:
             event_list.extend(self.key_tuple)
@@ -69,7 +69,7 @@ class SimpleUIElement(UIElement):
     pysimple_gui_class: typing.Optional[typing.Type[sg.Element]] = None
 
     @functools.cached_property
-    def gui_element(self) -> typing.Union[list, sg.Element]:
+    def gui_element(self) -> list | sg.Element:
         if self.pysimple_gui_class:
             return self.get_element_instance()
         return None
@@ -102,7 +102,7 @@ class NestedUIElement(UIElement):
         self.event_to_ui_element_dict = event_to_ui_element_dict
 
     @functools.cached_property
-    def event_tuple(self) -> typing.Tuple[str, ...]:
+    def event_tuple(self) -> tuple[str, ...]:
         return (
             functools.reduce(
                 operator.add,
@@ -112,7 +112,7 @@ class NestedUIElement(UIElement):
         )
 
     @property
-    def simple_ui_element_tuple(self) -> typing.Tuple[SimpleUIElement, ...]:
+    def simple_ui_element_tuple(self) -> tuple[SimpleUIElement, ...]:
         simple_ui_element_list = []
         for ui_element in self.ui_element_tuple:
             try:
@@ -181,7 +181,7 @@ class StopWatch(UIElement):
         return self._display_time
 
     @functools.cached_property
-    def gui_element(self) -> typing.Union[list, sg.Element]:
+    def gui_element(self) -> list | sg.Element:
         return sg.Text(self._get_update_string(), font=DEFAULT_FONT)
 
     def start(self):
@@ -273,7 +273,7 @@ class Popup(SimpleUIElement):
         self.popup = None
 
     @functools.cached_property
-    def gui_element(self) -> typing.Union[list, sg.Element]:
+    def gui_element(self) -> list | sg.Element:
         return []
 
     def handle_event(self, _: str, value_dict: dict):
@@ -401,7 +401,7 @@ class AboutText(Popup):
 
 class JumpToTimeInput(UIElement):
     @functools.cached_property
-    def gui_element(self) -> typing.Union[list, sg.Element]:
+    def gui_element(self) -> list | sg.Element:
         return sg.InputText(
             key=self.key_tuple[0],
             default_text="0",
@@ -509,7 +509,7 @@ class VolumeSlider(Slider):
         *args,
         default_value: typing.Optional[float] = -12,
         key_suffix: str = "",
-        volume_range: typing.Tuple[float, float] = (-120, 12),
+        volume_range: tuple[float, float] = (-120, 12),
         resolution: float = 0.25,
         audio_object_with_decibel: typing.Optional[walkman.DecibelMixin] = None,
         orientation: str = "horizontal",
@@ -567,7 +567,7 @@ class SelectCueMenu(UIElement):
         self.value_count = len(self.value_tuple)
 
     @functools.cached_property
-    def gui_element(self) -> typing.Union[list, sg.Element]:
+    def gui_element(self) -> list | sg.Element:
         return sg.Combo(
             self.value_tuple,
             default_value=self.value_tuple[0],
@@ -753,7 +753,7 @@ class NestedWindow(NestedUIElement):
         ui_element_sequence: typing.Sequence[UIElement],
         window_class: typing.Type[Window] = Window,
         window_name: str = walkman.constants.NAME,
-        window_kwargs: typing.Dict[str, typing.Any] = {},
+        window_kwargs: dict[str, typing.Any] = {},
         **kwargs,
     ):
         window_kwargs.update(

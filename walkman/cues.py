@@ -22,7 +22,7 @@ class UndefinedModuleReplicationWarning(Warning):
         )
 
 
-ModuleNameToInitialiseKwargsDict = typing.Dict[str, typing.Union[bool, dict]]
+ModuleNameToInitialiseKwargsDict = dict[str, bool | dict]
 
 
 class Cue(walkman.PlayMixin, walkman.JumpToMixin):
@@ -30,7 +30,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
         self,
         module_container: walkman.ModuleContainer,
         name: str,
-        **kwargs: typing.Dict[int, typing.Union[dict, bool]],
+        **kwargs: dict[int, dict | bool],
     ):
         self._module_container = module_container
         self._name = name
@@ -54,9 +54,9 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
     def _initialise_module_tuple(
         self,
         module_name: str,
-        module_dict: typing.Dict[str, walkman.Module],
-        replication_configuration: typing.Dict[int, typing.Dict[str, typing.Any]],
-    ) -> typing.Tuple[walkman.Module, ...]:
+        module_dict: dict[str, walkman.Module],
+        replication_configuration: dict[int, dict[str, typing.Any]],
+    ) -> tuple[walkman.Module, ...]:
         initialised_module_list = []
         for (
             module_replication_key,
@@ -90,7 +90,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
     def _stop(
         self,
         wait: float = 0,
-        module_to_keep_playing_tuple: typing.Tuple[walkman.Module, ...] = tuple([]),
+        module_to_keep_playing_tuple: tuple[walkman.Module, ...] = tuple([]),
         apply_auto_stop: bool = False,
     ):
         def stop_module(module_to_stop: walkman.Module, wait: float = 0):
@@ -118,7 +118,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
             )
 
     @functools.cached_property
-    def active_main_module_tuple(self) -> typing.Tuple[walkman.Module, ...]:
+    def active_main_module_tuple(self) -> tuple[walkman.Module, ...]:
         """All explicitly activated modules."""
         active_module_list = []
         for (
@@ -144,7 +144,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
     @functools.cached_property
     def main_module_to_dependency_module_chain_dict(
         self,
-    ) -> typing.Dict[walkman.Module, tuple[walkman.Module]]:
+    ) -> dict[walkman.Module, tuple[walkman.Module]]:
         main_module_to_dependency_module_chain_dict = {}
         for main_module in self.active_main_module_tuple:
             dependency_module_chain = main_module.module_chain
@@ -156,7 +156,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
     @functools.cached_property
     def dependency_module_to_main_module_tuple_dict(
         self,
-    ) -> typing.Dict[walkman.Module, tuple[walkman.Module]]:
+    ) -> dict[walkman.Module, tuple[walkman.Module]]:
         dependency_module_to_main_module_tuple_dict = {}
         for dependency_module in self.active_dependency_module_tuple:
             main_module_list = []
@@ -172,7 +172,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
         return dependency_module_to_main_module_tuple_dict
 
     @functools.cached_property
-    def active_dependency_module_tuple(self) -> typing.Tuple[walkman.Module, ...]:
+    def active_dependency_module_tuple(self) -> tuple[walkman.Module, ...]:
         """Dependency modules of explicitly activated modules."""
         active_dependency_module_list = []
         for (
@@ -184,7 +184,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
         return tuple(active_dependency_module_list)
 
     @functools.cached_property
-    def active_module_tuple(self) -> typing.Tuple[walkman.Module, ...]:
+    def active_module_tuple(self) -> tuple[walkman.Module, ...]:
         """All modules which are active during the given cue
 
         (basically a summary of explicitly activated modules + their dependency
@@ -245,7 +245,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
                 initialised_module_list.extend(module_instance.initialise())
 
     def deactivate(
-        self, module_to_keep_playing_tuple: typing.Tuple[walkman.Module, ...]
+        self, module_to_keep_playing_tuple: tuple[walkman.Module, ...]
     ):
         if self.is_playing:
             self._is_playing = False
@@ -261,7 +261,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
 
 
 class CueManager(object):
-    def __init__(self, cue_tuple: typing.Tuple[Cue, ...]):
+    def __init__(self, cue_tuple: tuple[Cue, ...]):
         self._cue_index = 0
         self._cue_tuple = cue_tuple
         self._cue_count = len(cue_tuple)
@@ -289,7 +289,7 @@ class CueManager(object):
         if is_playing:
             self.current_cue.play()
 
-    def __getitem__(self, index_or_key: typing.Union[str, int]) -> Cue:
+    def __getitem__(self, index_or_key: str | int) -> Cue:
         if isinstance(index_or_key, str):
             index = self._cue_name_tuple.index(index_or_key)
         else:
@@ -297,7 +297,7 @@ class CueManager(object):
         return self._cue_tuple[index]
 
     @property
-    def cue_name_tuple(self) -> typing.Tuple[str, ...]:
+    def cue_name_tuple(self) -> tuple[str, ...]:
         return self._cue_name_tuple
 
     @property

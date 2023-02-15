@@ -6,7 +6,7 @@ import pyo
 __all__ = ("ChannelMapping", "dict_or_channel_mapping_to_channel_mapping")
 
 
-class ChannelMapping(typing.Dict[int, typing.Tuple[int, ...]]):
+class ChannelMapping(dict[int, tuple[int, ...]]):
     """Map audio channels to other audio channels.
 
     Left side is always one channel, right side can be one
@@ -35,7 +35,7 @@ class ChannelMapping(typing.Dict[int, typing.Tuple[int, ...]]):
             del self[key]
 
     @property
-    def left_channel_set(self) -> typing.Set[int]:
+    def left_channel_set(self) -> set[int]:
         return set(self.keys())
 
     @property
@@ -43,11 +43,11 @@ class ChannelMapping(typing.Dict[int, typing.Tuple[int, ...]]):
         return max(self.left_channel_set) + 1
 
     @property
-    def right_channel_tuple_tuple(self) -> typing.Tuple[typing.Tuple[int, ...], ...]:
+    def right_channel_tuple_tuple(self) -> tuple[tuple[int, ...], ...]:
         return tuple(self.values())
 
     @property
-    def right_channel_set(self) -> typing.Set[int]:
+    def right_channel_set(self) -> set[int]:
         right_channel_set = set([])
         for right_channel_tuple in self.right_channel_tuple_tuple:
             for right_channel in right_channel_tuple:
@@ -63,7 +63,7 @@ class ChannelMapping(typing.Dict[int, typing.Tuple[int, ...]]):
 
 
 def dict_or_channel_mapping_to_channel_mapping(
-    dict_or_channel_mapping_to_channel_mapping: typing.Union[dict, ChannelMapping]
+    dict_or_channel_mapping_to_channel_mapping: dict | ChannelMapping
 ) -> ChannelMapping:
     if not isinstance(dict_or_channel_mapping_to_channel_mapping, ChannelMapping):
         channel_mapping = ChannelMapping(dict_or_channel_mapping_to_channel_mapping)

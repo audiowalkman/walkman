@@ -13,7 +13,7 @@ import walkman
 @dataclasses.dataclass
 class AudioTest(walkman.CloseMixin):
     channel_count: int
-    internal_pyo_object_list: typing.List[pyo.PyoObject] = dataclasses.field(
+    internal_pyo_object_list: list[pyo.PyoObject] = dataclasses.field(
         default_factory=lambda: []
     )
 
@@ -78,7 +78,7 @@ class AudioRotationTest(AudioTest):
         self.decibel_signal.setValue(decibel)
 
     @property
-    def pyo_object_list(self) -> typing.List[pyo.PyoObject]:
+    def pyo_object_list(self) -> list[pyo.PyoObject]:
         return self.internal_pyo_object_list
 
     def play(self):

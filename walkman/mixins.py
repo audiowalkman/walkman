@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import functools
 import time
-import typing
 
 import pyo
 
@@ -109,7 +108,7 @@ class PyoObjectMixin(object):
         return pyo.Sig(0)
 
     @property
-    def pyo_object_or_float(self) -> typing.Union[pyo.PyoObject, float]:
+    def pyo_object_or_float(self) -> pyo.PyoObject | float:
         return self.pyo_object
 
 

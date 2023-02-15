@@ -201,8 +201,8 @@ class Module(
         replication_key: str = "",
         send_to_physical_output: bool = False,
         auto_stop: bool = True,
-        module_input_dict: typing.Dict[str, ModuleInput] = dict([]),
-        default_dict: typing.Dict[str, typing.Any] = dict([]),
+        module_input_dict: dict[str, ModuleInput] = dict([]),
+        default_dict: dict[str, typing.Any] = dict([]),
     ):
         self.replication_key = replication_key
         self.send_to_physical_output = send_to_physical_output
@@ -310,7 +310,7 @@ class Module(
     def initialise(
         self,
         **kwargs,
-    ) -> typing.Tuple[Module, ...]:
+    ) -> tuple[Module, ...]:
         """Function returns tuple of all modules which have been initialised"""
 
         # The following loop allows syntactic sugar:
@@ -416,7 +416,7 @@ class Module(
         return 0
 
     @functools.cached_property
-    def module_input_chain(self) -> typing.Tuple[Module, ...]:
+    def module_input_chain(self) -> tuple[Module, ...]:
         """Get chain of inputs from left to right (order matters!)"""
 
         input_module_list = []
@@ -429,7 +429,7 @@ class Module(
         return tuple(reversed(input_module_list))
 
     @functools.cached_property
-    def implicit_module_input_chain(self) -> typing.Tuple[Module, ...]:
+    def implicit_module_input_chain(self) -> tuple[Module, ...]:
         """Get chain of implicit inputs from left to right (order matters!)"""
 
         input_module_list = []
@@ -446,7 +446,7 @@ class Module(
         return tuple(reversed(input_module_list))
 
     @functools.cached_property
-    def module_output_chain(self) -> typing.Tuple[Module, ...]:
+    def module_output_chain(self) -> tuple[Module, ...]:
         output_module_list = []
         for output_module in self.output_module_set:
             if output_module not in output_module_list:
@@ -460,7 +460,7 @@ class Module(
         return tuple(output_module_list)
 
     @functools.cached_property
-    def module_chain(self) -> typing.Tuple[Module, ...]:
+    def module_chain(self) -> tuple[Module, ...]:
         module_list = list(self.module_input_chain)
         for module_instance in self.module_output_chain:
             if module_instance not in module_list:
@@ -468,7 +468,7 @@ class Module(
         return tuple(module_list)
 
     @functools.cached_property
-    def implicit_module_chain(self) -> typing.Tuple[Module, ...]:
+    def implicit_module_chain(self) -> tuple[Module, ...]:
         module_list = list(self.implicit_module_input_chain)
         for module_instance in self.module_output_chain:
             if module_instance not in module_list:
@@ -547,7 +547,7 @@ class InvalidModuleInstanceNameError(Exception):
 
 ModuleName = str
 ReplicationKey = str
-ModuleNameToModuleClassDict = typing.Dict[str, typing.Type[Module]]
+ModuleNameToModuleClassDict = dict[str, typing.Type[Module]]
 
 
 class UndefinedModuleWarning(Warning):
@@ -582,7 +582,7 @@ class ConfigureModuleError(TypeError):
         self,
         replication_key: str,
         module_class: typing.Type[Module],
-        module_configuration: typing.Dict[str, typing.Any],
+        module_configuration: dict[str, typing.Any],
         exception_text: str,
     ):
         super().__init__(
@@ -595,7 +595,7 @@ class ConfigureModuleError(TypeError):
 
 
 class ModuleContainer(
-    typing.Dict[ModuleName, typing.Dict[ReplicationKey, Module]], walkman.CloseMixin
+    dict[ModuleName, dict[ReplicationKey, Module]], walkman.CloseMixin
 ):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -671,8 +671,8 @@ class ModuleContainer(
     @classmethod
     def from_module_configuration(
         cls,
-        module_name_to_replication_configuration_dict: typing.Dict[
-            str, typing.Dict[str, typing.Dict[str, typing.Any]]
+        module_name_to_replication_configuration_dict: dict[
+            str, dict[str, dict[str, typing.Any]]
         ],
         module_name_to_module_class_dict: typing.Optional[
             ModuleNameToModuleClassDict
@@ -726,8 +726,8 @@ class ModuleContainer(
             module.close()
 
     @property
-    def module_tuple(self) -> typing.Tuple[walkman.Module, ...]:
-        module_list: typing.List[walkman.Module] = []
+    def module_tuple(self) -> tuple[walkman.Module, ...]:
+        module_list: list[walkman.Module] = []
         for module_dict in self.values():
             module_list.extend(module_dict.values())
         return tuple(module_list)

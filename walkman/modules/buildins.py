@@ -171,7 +171,7 @@ class Parameter(base.ModuleWithFader):
 
     def _initialise(
         self,
-        value: typing.Union[float, typing.List[typing.List[float]]] = 0,
+        value: float | list[list[float]] = 0,
         envelope_type: str = DEFAULT_ENVELOPE_TYPE,
         rise_time: float = 0.001,
         fall_time: float = 0.001,
@@ -306,7 +306,7 @@ class IllegalChannelIndexWarning(Warning):
 
 
 MixerIndex = int
-MixerInfo = typing.Tuple[MixerIndex, ...]
+MixerInfo = tuple[MixerIndex, ...]
 """Each channel of an audio signal has a specific index in the mixer"""
 
 MixerAudioInputKeyPrefix = "audio_input_"
@@ -329,7 +329,7 @@ class Mixer(
 
     def __init__(
         self,
-        channel_mapping: typing.Union[walkman.ChannelMapping, dict] = {0: 0, 1: 1},
+        channel_mapping: walkman.ChannelMapping | dict = {0: 0, 1: 1},
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -374,7 +374,7 @@ class Mixer(
         return self.output_mixer_as_pyo_object
 
     def _initialise(
-        self, **audio_input_channel_mapping: typing.Dict[str, walkman.ChannelMapping]
+        self, **audio_input_channel_mapping: dict[str, walkman.ChannelMapping]
     ):
         audio_input_key_to_channel_mapping_dict = {}
         for (

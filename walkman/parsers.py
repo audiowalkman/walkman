@@ -84,7 +84,7 @@ def configure_module_block_and_audio_object_to_module_container(
 
 def configure_block_to_global_state_object_tuple(
     configure_block: dict,
-) -> typing.Tuple[str, walkman.AudioHost, walkman.ModuleContainer]:
+) -> tuple[str, walkman.AudioHost, walkman.ModuleContainer]:
     name = pop_from_dict(configure_block, CONFIGURE_NAME_KEY, "Project")
     logging_level = pop_from_dict(configure_block, CONFIGURE_LOGGING_LEVEL_KEY, "info")
     audio_block = pop_from_dict(configure_block, CONFIGURE_AUDIO_KEY, {})
