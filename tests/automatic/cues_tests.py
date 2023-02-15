@@ -33,6 +33,9 @@ class CueTest(walkman.unit_tests.WalkmanTestCase, unittest.TestCase):
         self.cue_1 = walkman.Cue(
             self.module_container, "cue_2", mixer={"master_output": {}}
         )
+        self.cue_2 = walkman.Cue(
+            self.module_container, "3", mixer={"master_output": {}}, sine={"modern": {}}
+        )
 
     def test_name(self):
         self.assertEqual(self.cue_0.name, "1")
@@ -50,6 +53,10 @@ class CueTest(walkman.unit_tests.WalkmanTestCase, unittest.TestCase):
             self.cue_1.active_main_module_tuple,
             (self.mixer,),
         )
+        self.assertEqual(
+            self.cue_2.active_main_module_tuple,
+            (self.mixer, self.sine),
+        )
 
     def test_active_dependency_module_tuple(self):
         self.assertEqual(
@@ -58,13 +65,11 @@ class CueTest(walkman.unit_tests.WalkmanTestCase, unittest.TestCase):
         )
         self.assertEqual(
             self.cue_1.active_dependency_module_tuple,
-            (
-                self.mixer.audio_input_1,
-                self.sine.frequency,
-                self.sine.decibel,
-                self.sine,
-                self.mixer.decibel,
-            ),
+            (self.mixer.decibel,),
+        )
+        self.assertEqual(
+            self.cue_2.active_dependency_module_tuple,
+            (self.mixer.decibel, self.sine.frequency, self.sine.decibel, self.mixer),
         )
 
     def test_active_module_tuple(self):
@@ -80,12 +85,5 @@ class CueTest(walkman.unit_tests.WalkmanTestCase, unittest.TestCase):
         )
         self.assertEqual(
             self.cue_1.active_module_tuple,
-            (
-                self.mixer.audio_input_1,
-                self.sine.frequency,
-                self.sine.decibel,
-                self.sine,
-                self.mixer.decibel,
-                self.mixer,
-            ),
+            (self.mixer.decibel, self.mixer),
         )

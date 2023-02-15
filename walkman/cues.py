@@ -144,19 +144,16 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
     @functools.cached_property
     def main_module_to_dependency_module_chain_dict(
         self,
-    ) -> dict[walkman.Module, tuple[walkman.Module]]:
-        main_module_to_dependency_module_chain_dict = {}
-        for main_module in self.active_main_module_tuple:
-            dependency_module_chain = main_module.module_chain
-            main_module_to_dependency_module_chain_dict.update(
-                {main_module: dependency_module_chain}
-            )
-        return main_module_to_dependency_module_chain_dict
+    ) -> dict[walkman.Module, tuple[walkman.Module, ...]]:
+        return {
+            main_module: main_module.implicit_module_chain
+            for main_module in self.active_main_module_tuple
+        }
 
     @functools.cached_property
     def dependency_module_to_main_module_tuple_dict(
         self,
-    ) -> dict[walkman.Module, tuple[walkman.Module]]:
+    ) -> dict[walkman.Module, tuple[walkman.Module, ...]]:
         dependency_module_to_main_module_tuple_dict = {}
         for dependency_module in self.active_dependency_module_tuple:
             main_module_list = []
@@ -244,9 +241,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
             if module_instance not in initialised_module_list:
                 initialised_module_list.extend(module_instance.initialise())
 
-    def deactivate(
-        self, module_to_keep_playing_tuple: tuple[walkman.Module, ...]
-    ):
+    def deactivate(self, module_to_keep_playing_tuple: tuple[walkman.Module, ...]):
         if self.is_playing:
             self._is_playing = False
             self._stop(
