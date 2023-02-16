@@ -57,15 +57,9 @@ walkman my_composition.toml.j2
 
 ## Tests
 
-### Automatic
-
 With nix tests can be run with a newly compiled isolated setup:
 
 
 ```bash
 nix-build default.nix
 ```
-
-### Manual
-
-Please consult the respective [README](https://github.com/audiowalkman/walkman/blob/main/tests/manual/README.md).
