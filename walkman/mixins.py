@@ -121,7 +121,7 @@ class DecibelMixin(object):
             return -120
 
     @decibel.setter
-    def decibel(self, value: float) -> float:
+    def decibel(self, value: float):
         try:
             self._decibel.setValue(value)
         except AttributeError:
