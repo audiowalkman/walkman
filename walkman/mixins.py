@@ -161,9 +161,11 @@ class PyoObjectMixinSwitch(object):
         # Shallow copy is sufficient, because we don't want to copy
         # the underlying '_pyo_object_mixin', we only want to switch
         # the default 'pyo_object'.
-        s = type(self)(self._pyo_object_mixin)
-        s.pyo_object_index = pyo_object_index
-        return s
+        if pyo_object_index != self.pyo_object_index:  # Avoid wasting RAM
+            s = type(self)(self._pyo_object_mixin)
+            s.pyo_object_index = pyo_object_index
+            return s
+        return self
 
 
 class IllegalPyoObjectIndexWarning(Warning):
