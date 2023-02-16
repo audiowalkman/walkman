@@ -385,6 +385,23 @@ class Module(
         try:
             return self._pyo_object
         except AttributeError:
+            # Some modules (for instance 'Value') don't define a 'pyo_object',
+            # but only define a property for 'pyo_object_or_float'. Usually
+            # other modules should only use them via their
+            # 'pyo_object_or_float' attribute, but if another module is badly
+            # programmed it may use the other objects 'pyo_object' attribute.
+            # This is not extremely dangerous, but still unexpected and should
+            # therefore raise a warning.
+            #
+            # Another option why we end up here, is simply because the (python
+            # side) module definition is incomplete. Then we should fix this
+            # module.
+            warnings.warn(
+                f"No '_pyo_object' is defined for module '{self}'. "
+                "Fallback to default 'pyo_object' (a signal 'f(x) = 0'). "
+                "Did another module call this module via its 'pyo_object' "
+                "property? Maybe change this to 'pyo_object_or_float'."
+            )
             self._pyo_object = super().pyo_object
             self.internal_pyo_object_list.append(self._pyo_object)
             return self.pyo_object
