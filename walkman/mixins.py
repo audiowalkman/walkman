@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import functools
-import time
 
 import pyo
 
@@ -47,34 +46,6 @@ class PlayMixin(object):
 class JumpToMixin(object):
     def jump_to(self, time_in_seconds: float):
         ...
-
-
-class TrackedPlayMixin(PlayMixin, JumpToMixin):
-    @property
-    def play_time(self) -> float:
-        """Get time when 'play' method has been called"""
-        return self._play_time
-
-    @property
-    def current_time(self) -> float:
-        """Get current position of object"""
-        return self._current_time
-
-    def _jump_to(self, time_in_seconds: float):
-        ...
-
-    def _play(self, duration: float = 0, delay: float = 0):
-        self._jump_to(self._current_time)
-        self._play_time = time.time()
-
-    def _stop(self, wait: float = 0):
-        self._current_time = min(
-            ((time.time() - self.play_time) + self.play_time, self.duration)
-        )
-
-    def jump_to(self, time_in_seconds: float):
-        self._current_time = time_in_seconds
-        self._jump_to(time_in_seconds)
 
 
 class CloseMixin(object):
