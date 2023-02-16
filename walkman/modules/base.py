@@ -446,29 +446,40 @@ class Module(
 
     @functools.cached_property
     def module_input_chain(self) -> tuple[Module, ...]:
-        """Get chain of inputs from left to right (order matters!)"""
+        """Get chain of all inputs from left to right (order matters!).
 
-        input_module_list = []
-        for module_input_name in self.module_input_dict.keys():
-            input_module = getattr(self, module_input_name)
-            input_module_list.append(input_module)
-            for module_instance in reversed(input_module.module_input_chain):
-                if module_instance not in input_module_list:
-                    input_module_list.append(module_instance)
-        return tuple(reversed(input_module_list))
+        This returns both input modules: explicit modules
+        (e.g. which are only active if explicitly activated via the
+        [cue.CUE_NAME.MODULE_NAME.REPLICATION_KEY] syntax) and
+        implicit modules (e.g. which are active if they are explicitly
+        activated OR/AND if their output is explicitly activated).
+        """
+        return self._module_input_chain(lambda m: m.module_input_chain)
 
     @functools.cached_property
     def implicit_module_input_chain(self) -> tuple[Module, ...]:
-        """Get chain of implicit inputs from left to right (order matters!)"""
+        """Get chain of implicit inputs from left to right (order matters!).
 
+        This only returns implicit modules (e.g. which are active if their
+        output is explicitly activated) and skips explicit modules.
+        """
+        return self._module_input_chain(
+            lambda m: m.implicit_module_input_chain, lambda m: m.implicit
+        )
+
+    def _module_input_chain(
+        self,
+        module_to_module_input_chain: typing.Callable[[Module], tuple[Module, ...]],
+        module_input_filter: typing.Callable[[ModuleInput], bool] = lambda m: True,
+    ):
         input_module_list = []
         for module_input_name, module_input in self.module_input_dict.items():
-            if module_input.implicit:
+            if module_input_filter(module_input):
                 input_module = getattr(self, module_input_name)
                 if input_module not in input_module_list:
                     input_module_list.append(input_module)
                 for module_instance in reversed(
-                    input_module.implicit_module_input_chain
+                    module_to_module_input_chain(input_module)
                 ):
                     if module_instance not in input_module_list:
                         input_module_list.append(module_instance)
