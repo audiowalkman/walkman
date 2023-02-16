@@ -74,6 +74,8 @@ class NamedMixin(object):
 
 
 class PyoObjectMixin(object):
+    """Mixin for objects which consist of one or more pyo objects."""
+
     @functools.cached_property
     def pyo_object(self) -> pyo.PyoObject:
         return pyo.Sig(0)
@@ -81,6 +83,14 @@ class PyoObjectMixin(object):
     @property
     def pyo_object_or_float(self) -> pyo.PyoObject | float:
         return self.pyo_object
+
+    @functools.cached_property
+    def pyo_object_tuple(self) -> tuple[pyo.PyoObject, ...]:
+        return (self.pyo_object,)
+
+    @functools.cached_property
+    def pyo_object_count(self) -> int:
+        return len(self.pyo_object_tuple)
 
 
 class DecibelMixin(object):
