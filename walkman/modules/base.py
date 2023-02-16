@@ -313,40 +313,68 @@ class Module(
     ) -> tuple[Module, ...]:
         """Function returns tuple of all modules which have been initialised"""
 
-        # The following loop allows syntactic sugar:
-        # if a module has another (maybe auto-generated) module as
-        # its input, we can set the 'initialise' parameters of the
-        # input in the following way:
-        #
-        # [cue.CUE_NAME.MODULE_NAME.REPLICATION_KEY.INPUT_NAME]
-        #
-        # so for instance, creating an octave glissando:
-        #
-        # [cue.1.sine.0.frequency]
-        # value = [[0, 220], [10, 440]]
-        #
-        # This construct also allows the special syntax
-        #
-        # [cue.CUE_NAME.MODULE_NAME.REPLICATION_KEY]
-        # INPUT_NAME = VALUE
-        #
-        # if the module input is of type "Parameter".
-        # So for instance:
-        #
-        # [cue.1.sine.0]
-        # frequency = 110
+        kwargs, initialised_module_list = self._initialise_syntactic_sugar_0(**kwargs)
 
+        # Parse everything else to actual initialise method.
+        try:
+            self._initialise(**kwargs)
+        except TypeError as error:
+            warnings.warn(MissingInitializationArgumentsWarning(self, str(error)))
+
+        # When switching playing cues the 'play' method
+        # won't be called. But we have to ensure that the envelopes
+        # are running once we start a new cue.
+        if self.is_playing:
+            self._play_without_fader()
+
+        initialised_module_list.append(self)
+        return tuple(initialised_module_list)
+
+    # Tested in 'test_initialise_syntactic_sugar_0'
+    def _initialise_syntactic_sugar_0(self, **kwargs) -> tuple[dict, list[Module]]:
+        """Allow syntactic sugar to set parameter values.
+
+        If a module has another (maybe auto-generated) module as
+        its input, we can set the 'initialise' parameters of the
+        input in the following way:
+
+        [cue.CUE_NAME.MODULE_NAME.REPLICATION_KEY.INPUT_NAME]
+
+        so for instance, creating an octave glissando:
+
+        [cue.1.sine.0.frequency]
+        value = [[0, 220], [10, 440]]
+
+        This construct also allows the special syntax
+
+        [cue.CUE_NAME.MODULE_NAME.REPLICATION_KEY]
+        INPUT_NAME = VALUE
+
+        if the module input is of type "Parameter".
+        So for instance:
+
+        [cue.1.sine.0]
+        frequency = 110
+        """
+
+        # XXX: Can we find a more efficient way for this function?
+        # This is called whenever we switch a cue (and is therefore not
+        # during initialization time, but performance time, so it can badly
+        # effect performance speed).
         initialised_module_list = []
-
         new_kwargs = {}
 
         for argument_key, argument_value in kwargs.items():
-            if argument_key in self.module_input_dict:
+            try:
+                module_instance = self.module_input_dict[argument_key]
+            except KeyError:
+                new_kwargs.update({argument_key: argument_value})
+            else:
                 module_instance = getattr(self, argument_key)
                 if isinstance(argument_value, dict):
                     module_instance_kwargs = argument_value
                 elif isinstance(argument_value, (float, int)) and isinstance(
-                    getattr(self, argument_key), walkman.Parameter
+                    module_instance, walkman.Parameter
                 ):
                     module_instance_kwargs = {"value": argument_value}
                 else:
@@ -360,23 +388,7 @@ class Module(
                 module_instance.initialise(**module_instance_kwargs)
                 initialised_module_list.append(module_instance)
 
-            else:
-                new_kwargs.update({argument_key: argument_value})
-
-        # Parse everything else to actual initialise method
-        try:
-            self._initialise(**new_kwargs)
-        except TypeError as error:
-            warnings.warn(MissingInitializationArgumentsWarning(self, str(error)))
-
-        # When switching playing cues the 'play' method
-        # won't be called. But we have to ensure that the envelopes
-        # are running once we start a new cue.
-        if self.is_playing:
-            self._play_without_fader()
-
-        initialised_module_list.append(self)
-        return tuple(initialised_module_list)
+        return new_kwargs, initialised_module_list
 
     # ################## PUBLIC PROPERTIES  ################## #
 
