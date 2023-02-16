@@ -132,7 +132,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
             else:
                 for replication_key in replication_configuration.keys():
                     try:
-                        active_module_list.append(module_dict[replication_key])
+                        active_module_list.append(module_dict[replication_key].base)
                     except KeyError:
                         warnings.warn(
                             UndefinedModuleReplicationWarning(

@@ -47,43 +47,53 @@ class CueTest(walkman.unit_tests.WalkmanTestCase, unittest.TestCase):
     def test_active_main_module_tuple(self):
         self.assertEqual(
             self.cue_0.active_main_module_tuple,
-            (self.sine,),
+            (self.sine.base,),
         )
         self.assertEqual(
             self.cue_1.active_main_module_tuple,
-            (self.mixer,),
+            (self.mixer.base,),
         )
         self.assertEqual(
             self.cue_2.active_main_module_tuple,
-            (self.mixer, self.sine),
+            (self.mixer.base, self.sine.base),
         )
 
     def test_active_dependency_module_tuple(self):
         self.assertEqual(
             self.cue_0.active_dependency_module_tuple,
-            (self.sine.frequency, self.sine.decibel, self.mixer, self.mixer.decibel),
+            (
+                self.sine.frequency.base,
+                self.sine.decibel.base,
+                self.mixer.base,
+                self.mixer.decibel.base,
+            ),
         )
         self.assertEqual(
             self.cue_1.active_dependency_module_tuple,
-            (self.mixer.decibel,),
+            (self.mixer.decibel.base,),
         )
         self.assertEqual(
             self.cue_2.active_dependency_module_tuple,
-            (self.mixer.decibel, self.sine.frequency, self.sine.decibel, self.mixer),
+            (
+                self.mixer.decibel.base,
+                self.sine.frequency.base,
+                self.sine.decibel.base,
+                self.mixer.base,
+            ),
         )
 
     def test_active_module_tuple(self):
         self.assertEqual(
             self.cue_0.active_module_tuple,
             (
-                self.sine.frequency,
-                self.sine.decibel,
-                self.mixer,
-                self.mixer.decibel,
-                self.sine,
+                self.sine.frequency.base,
+                self.sine.decibel.base,
+                self.mixer.base,
+                self.mixer.decibel.base,
+                self.sine.base,
             ),
         )
         self.assertEqual(
             self.cue_1.active_module_tuple,
-            (self.mixer.decibel, self.mixer),
+            (self.mixer.decibel.base, self.mixer.base),
         )

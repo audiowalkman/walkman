@@ -212,6 +212,12 @@ class Module(
         self.default_dict = default_dict
         self.internal_pyo_object_list = []
 
+    def __new__(cls, *args, **kwargs):
+        module = super().__new__(cls)
+        module.__init__(*args, **kwargs)
+        switch = walkman.PyoObjectMixinSwitch(module)
+        return switch
+
     def __init_subclass__(cls, **module_input_dict: ModuleInput):
         try:
             cls.default_module_input_dict = dict(
@@ -414,9 +420,9 @@ class Module(
                 "Did another module call this module via its 'pyo_object' "
                 "property? Maybe change this to 'pyo_object_or_float'."
             )
-            self._pyo_object = super().pyo_object
-            self.internal_pyo_object_list.append(self._pyo_object)
-            return self.pyo_object
+            pyo_object = super().pyo_object
+            self.internal_pyo_object_list.append(pyo_object)
+            return pyo_object
 
     @property
     def fade_in_duration(self) -> float:
@@ -475,7 +481,7 @@ class Module(
         input_module_list = []
         for module_input_name, module_input in self.module_input_dict.items():
             if module_input_filter(module_input):
-                input_module = getattr(self, module_input_name)
+                input_module = getattr(self, module_input_name).base
                 if input_module not in input_module_list:
                     input_module_list.append(input_module)
                 for module_instance in reversed(

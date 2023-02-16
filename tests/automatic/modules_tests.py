@@ -165,8 +165,8 @@ class ModuleTest(walkman.unit_tests.ModuleWithFaderTestCase, unittest.TestCase):
         self.assertEqual(
             module_instance.module_input_chain,
             (
-                module_instance.dummy_input,
-                module_instance.audio_input,
+                module_instance.dummy_input.base,
+                module_instance.audio_input.base,
             ),
         )
 
@@ -177,10 +177,10 @@ class ModuleTest(walkman.unit_tests.ModuleWithFaderTestCase, unittest.TestCase):
         self.assertEqual(
             module_instance.module_input_chain,
             (
-                module_instance.dummy_input,
-                module_instance.audio_input.dummy_input,
-                module_instance.audio_input.audio_input,
-                module_instance.audio_input,
+                module_instance.dummy_input.base,
+                module_instance.audio_input.dummy_input.base,
+                module_instance.audio_input.audio_input.base,
+                module_instance.audio_input.base,
             ),
         )
 
@@ -189,8 +189,8 @@ class ModuleTest(walkman.unit_tests.ModuleWithFaderTestCase, unittest.TestCase):
         self.assertEqual(
             module_instance.implicit_module_input_chain,
             (
-                module_instance.audio_input.audio_input,
-                module_instance.audio_input,
+                module_instance.audio_input.audio_input.base,
+                module_instance.audio_input.base,
             ),
         )
 
@@ -202,7 +202,7 @@ class ModuleTest(walkman.unit_tests.ModuleWithFaderTestCase, unittest.TestCase):
         self.assertEqual(len(module_output_chain), 2)
         self.assertEqual(
             module_output_chain,
-            (module_instance.audio_input, module_instance),
+            (module_instance.audio_input.base, module_instance.base),
         )
 
     def test_module_chain(self):
@@ -210,9 +210,9 @@ class ModuleTest(walkman.unit_tests.ModuleWithFaderTestCase, unittest.TestCase):
         self.assertEqual(
             module_instance.audio_input.module_chain,
             (
-                module_instance.audio_input.dummy_input,
-                module_instance.audio_input.audio_input,
-                module_instance,
+                module_instance.audio_input.dummy_input.base,
+                module_instance.audio_input.audio_input.base,
+                module_instance.base,
             ),
         )
 
@@ -221,8 +221,8 @@ class ModuleTest(walkman.unit_tests.ModuleWithFaderTestCase, unittest.TestCase):
         self.assertEqual(
             module_instance.audio_input.implicit_module_chain,
             (
-                module_instance.audio_input.audio_input,
-                module_instance,
+                module_instance.audio_input.audio_input.base,
+                module_instance.base,
             ),
         )
 
