@@ -1,5 +1,7 @@
 """Boot walkman loop (with or without UI)"""
 
+import time
+
 import walkman
 
 
@@ -14,8 +16,14 @@ def start_loop(
         gui = walkman.ui.backend_to_gui(backend)
         gui.loop()
     else:
-        while True:
+        backend.start()
+        try:
+            while True:
+                time.sleep(0.1)
+        except (KeyboardInterrupt, Exception):
             pass
+        finally:
+            backend.stop()
 
 
 def start_loop_from_jinja2_file_path(jinja2_file_path: str, **kwargs):

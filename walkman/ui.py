@@ -941,14 +941,12 @@ class GUI(NestedWindow):
 
     def before_loop(self):
         super().before_loop()
-        self.backend.audio_host.play()
+        self.backend.start()
         walkman.constants.LOGGER.window_logger_handler.update_output()
 
     def after_loop(self):
         super().after_loop()
-        self.backend.cue_manager.current_cue.stop()
-        self.backend.module_container.close()
-        self.backend.audio_host.close()
+        self.backend.stop()
 
 
 UI_CLASS_TUPLE = (Walkman,)
