@@ -33,7 +33,8 @@ class AudioHost(walkman.PlayMixin, walkman.CloseMixin, walkman.DecibelMixin):
             jackname=f"{walkman.constants.NAME}_{channel_count}",
             **kwargs,
         )
-        self.server.setJackAuto(xin=False, xout=False)
+        if audio == "jack":
+            self.server.setJackAuto(xin=False, xout=False)
         self.server.boot()
         self.decibel = -12
 
