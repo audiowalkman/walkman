@@ -2,6 +2,7 @@ import abc
 import math
 import inspect
 import typing
+import warnings
 
 import pyo
 
@@ -21,7 +22,7 @@ class SineAudioObject(walkman.PyoObjectMixin):
 
 class WalkmanTestCase(object):
     server_args: typing.Tuple[typing.Any, ...] = tuple([])
-    # XXX: buffer size is set to an extremely low value, to
+    # Buffer size is set to an extremely low value, to
     # ensure tests give precise results. If we use
     # a higher buffer size it is more likely that we get
     # rounding errors.
@@ -56,6 +57,45 @@ class WalkmanTestCase(object):
 
     def is_pyo_object_silent(self, *args, **kwargs) -> bool:
         return not self.is_pyo_object_not_silent(*args, **kwargs)
+
+    def do_test_run_from_jinja2_file_path(self, jinja2_file_path: str):
+        # We can't put the filter change into 'do_test_run',
+        # because we'd miss warnings which happen during
+        # backend initialization.
+        warnings.simplefilter("error")
+        try:
+            backend = walkman.parsers.jinja2_file_path_to_backend(jinja2_file_path)
+        except Exception as e:
+            return [e]
+        return self.do_test_run(backend)
+
+    def do_test_run_from_toml_str(self, toml_str: str):
+        # We can't put the filter change into 'do_test_run',
+        # because we'd miss warnings which happen during
+        # backend initialization.
+        warnings.simplefilter("error")
+        try:
+            backend = walkman.parsers.toml_str_to_backend(toml_str)
+        except Exception as e:
+            return [e]
+        return self.do_test_run(backend)
+
+    def do_test_run(
+        self, backend: walkman.Backend
+    ):
+        exception_list = []
+        try:
+            backend.start()
+            cue_count = len(backend.cue_manager)
+            for _ in range(cue_count):
+                backend.cue_manager.current_cue.play()
+                self.jump_to(60)
+                backend.cue_manager.move_to_next_cue()
+        except Exception as e:
+            exception_list.append(str(e))
+        finally:
+            backend.stop()
+        return exception_list
 
     def assertIsSilent(self, *args, **kwargs):
         self.assertTrue(self.is_pyo_object_silent(*args, **kwargs))

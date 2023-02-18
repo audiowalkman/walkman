@@ -112,10 +112,7 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
                 max(main_module.fade_out_duration for main_module in main_module_tuple)
                 + wait
             )
-            stop_module(
-                dependency_module,
-                wait=local_wait,
-            )
+            stop_module(dependency_module, wait=local_wait)
 
     @functools.cached_property
     def active_main_module_tuple(self) -> tuple[walkman.Module, ...]:
@@ -290,6 +287,9 @@ class CueManager(object):
         else:
             index = index_or_key
         return self._cue_tuple[index]
+
+    def __len__(self) -> int:
+        return len(self._cue_tuple)
 
     @property
     def cue_name_tuple(self) -> tuple[str, ...]:
