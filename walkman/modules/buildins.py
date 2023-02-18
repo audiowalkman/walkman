@@ -82,10 +82,6 @@ class Empty(base.Module):
         return self.signal
 
 
-class IllegalMidiControlIndexWarning(Warning):
-    pass
-
-
 DEFAULT_ENVELOPE_TYPE = "linear"
 
 
