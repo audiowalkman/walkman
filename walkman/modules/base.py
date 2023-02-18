@@ -780,8 +780,16 @@ class ModuleContainer(
 
     def get_module_by_name(self, module_instance_name: str) -> Module:
         try:
-            module_name, replication_key = module_instance_name.split(".")
+            pointer = module_instance_name.split(".")
+            # We either allow the syntax "MODULE_NAME.REPLICATION_KEY" or
+            # "MODULE_NAME.REPLICATION_KEY.PYO_OBJECT_INDEX".
+            if len(pointer) == 2:
+                module_name, replication_key = pointer
+                pyo_object_index = 0
+            else:
+                module_name, replication_key, pyo_object_index = pointer
+            pyo_object_index = int(pyo_object_index)
         except (AttributeError, ValueError):
             raise InvalidModuleInstanceNameError(module_instance_name)
         else:
-            return self[module_name][replication_key]
+            return self[module_name][replication_key].switch(pyo_object_index)
