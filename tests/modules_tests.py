@@ -333,9 +333,7 @@ class ConvolutionReverbTest(walkman.unit_tests.ModuleTestCase, unittest.TestCase
         **kwargs
     ) -> walkman.Module:
         return super().get_module_instance(
-            module_class=module_class,
-            impulse_path="tests/impulse.wav",
-            **kwargs
+            module_class=module_class, impulse_path="tests/impulse.wav", **kwargs
         )
 
 
@@ -407,3 +405,48 @@ class IRAverageTest(walkman.unit_tests.ModuleTestCase, unittest.TestCase):
             pass
 
         return IRAverageForTest
+
+
+class HubTest(walkman.unit_tests.WalkmanTestCase, unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        module_name_to_replication_configuration_dict = {
+            "sine": {"0": {}, "1": {}, "2": {}},
+            "hub": {
+                "0": {
+                    "audio_input_0": "sine.0",
+                    "audio_input_1": "sine.1",
+                    "audio_input_2": "sine.2",
+                    "audio_input_index_to_pyo_object_index": {0: 0, 2: 1},
+                }
+            },
+            "amplification": {
+                "0": {"audio_input": "hub.0.0", "send_to_physical_output": True},
+                "1": {"audio_input": "hub.0.1", "send_to_physical_output": True},
+            },
+        }
+        self.module_container = walkman.ModuleContainer.from_module_configuration(
+            module_name_to_replication_configuration_dict
+        )
+
+    def test_sine_0_is_audible(self):
+        self.assertSineIsAudible("0", "0")
+
+    def test_sine_2_is_audible(self):
+        self.assertSineIsAudible("2", "1")
+
+    def assertSineIsAudible(self, sine_index: str, amplification_index: str):
+        s = self.module_container["sine"][sine_index]
+        h = self.module_container["hub"]["0"]
+        a = self.module_container["amplification"][amplification_index]
+        self.assertIsSilent(s.pyo_object)
+        self.assertIsSilent(a.pyo_object)
+        s.play()
+        self.assertIsNotSilent(s.pyo_object)
+        h.play()
+        a.play()
+        self.assertIsNotSilent(a.pyo_object)
+        s.stop()
+        h.stop()
+        a.stop()
+

@@ -30,6 +30,7 @@ __all__ = (
     "Equalizer",
     "Average",
     "IRAverage",
+    "Hub",
 )
 
 
@@ -704,3 +705,99 @@ class IRAverage(
     @functools.cached_property
     def _pyo_object(self) -> pyo.PyoObject:
         return self.ir_average
+
+
+class Hub(
+    base.Module,
+    **{
+        f"{MixerAudioInputKeyPrefix}{index}": base.Catch(
+            walkman.constants.EMPTY_MODULE_INSTANCE_NAME, implicit=False
+        )
+        for index in range(100)
+    },
+):
+    """Concentrate various modules in one control hub and split afterwards again without mixing them together.
+
+    Unlike a mixer, in a hub modules still keep their 'pyo_object' separate from
+    each other. A hub is a simple tool to control various modules within the same
+    namespace.
+    """
+
+    def __init__(
+        self,
+        audio_input_index_to_pyo_object_index: dict[int, int] = {
+            i: i for i in range(100)
+        },
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.audio_input_index_to_pyo_object_index = (
+            audio_input_index_to_pyo_object_index
+        )
+
+    def _setup_pyo_object(self):
+        super()._setup_pyo_object()
+        self.silence = pyo.Sig(0)
+        self.internal_pyo_object_list.append(self.silence)
+
+    @functools.cached_property
+    def pyo_object_tuple(self):
+        pyo_object_list = []
+        pyo_object_index_to_audio_input_index = (
+            self.pyo_object_index_to_audio_input_index
+        )
+        for pyo_object_index in range(
+            max(self.audio_input_index_to_pyo_object_index.values()) + 1
+        ):
+            try:
+                audio_input_index = pyo_object_index_to_audio_input_index[
+                    pyo_object_index
+                ]
+            except KeyError:
+                pyo_object = self.silence
+            else:
+                pyo_object = getattr(
+                    self, f"audio_input_{audio_input_index}"
+                ).pyo_object
+            pyo_object_list.append(pyo_object)
+        return tuple(pyo_object_list)
+
+    @property
+    def audio_input_index_to_pyo_object_index(self) -> dict[int, int]:
+        return self._audio_input_index_to_pyo_object_index
+
+    @audio_input_index_to_pyo_object_index.setter
+    def audio_input_index_to_pyo_object_index(
+        self, audio_input_index_to_pyo_object_index: dict[int, int]
+    ):
+        safe_audio_input_index_to_pyo_object_index = {}
+        target_set = set([])
+        for k, v in audio_input_index_to_pyo_object_index.items():
+            if v in target_set:
+                warnings.warn(DuplicatePyoObjectIndexWarning(self, k, v))
+                continue
+            target_set.add(v)
+            safe_audio_input_index_to_pyo_object_index[k] = v
+        self._audio_input_index_to_pyo_object_index = (
+            safe_audio_input_index_to_pyo_object_index
+        )
+        try:
+            del self.pyo_object_index_to_audio_input_index  # Cleanup cache
+        except AttributeError:
+            pass
+
+    @functools.cached_property
+    def pyo_object_index_to_audio_input_index(self) -> dict[int, int]:
+        return {
+            pyo_object_index: audio_input_index
+            for audio_input_index, pyo_object_index in self.audio_input_index_to_pyo_object_index.items()
+        }
+
+
+class DuplicatePyoObjectIndexWarning(Warning):
+    def __init__(self, hub: Hub, audio_input_index: int, pyo_object_index: int):
+        super().__init__(
+            f"Found pyo_object_index duplicate in '{hub}': "
+            f"'audio_input_{audio_input_index}' points to already existing pyo_object_index"
+            f" {pyo_object_index}. This audio input has been dropped."
+        )
