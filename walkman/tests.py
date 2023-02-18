@@ -1,7 +1,6 @@
 import dataclasses
 import functools
 import itertools
-import typing
 import uuid
 
 import pyo
