@@ -11,4 +11,5 @@ from .backends import Backend
 from . import parsers
 from . import ui
 from .boot import *
+from .sequencers import *
 from . import unit_tests
