@@ -530,12 +530,6 @@ class ModuleWithFader(Module):
         self.fade_in_duration = fade_in_duration
         self.fade_out_duration = fade_out_duration
 
-    # ################## ABSTRACT PROPERTIES ################## #
-
-    @abc.abstractproperty
-    def _pyo_object(self) -> pyo.PyoObject:
-        ...
-
     # ################## PRIVATE METHODS     ################## #
 
     def _setup_pyo_object(self):
@@ -579,7 +573,7 @@ class ModuleWithFader(Module):
 
     @functools.cached_property
     def pyo_object(self) -> pyo.PyoObject:
-        pyo_object = self._pyo_object * self.fader
+        pyo_object = super().pyo_object * self.fader
         pyo_object.stop()
         return pyo_object
 
