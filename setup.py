@@ -32,7 +32,7 @@ setuptools.setup(
     packages=[
         package for package in setuptools.find_packages() if package[:5] != "tests"
     ],
-    python_requires=">=3.8",
-    extras_require={"testing": ["nose"]},
+    python_requires=">=3.10",
+    extras_require={"testing": ["pytest"]},
     entry_points={"console_scripts": ["walkman=walkman.__main__:main"]},
 )
