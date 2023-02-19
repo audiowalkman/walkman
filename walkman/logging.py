@@ -15,7 +15,7 @@ def get_logger(software_name: str) -> logging.Logger:
             super().__init__(*args, **kwargs)
             self.logger_window = logger_window
             self.buffer = ""
-            self.formatter = logging.Formatter()
+            self.formatter = logging.Formatter('%(asctime)s - %(message)s')
 
         def update_output(self):
             try:
