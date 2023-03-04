@@ -40,8 +40,8 @@ in
     src = fetchFromGitHub {
       owner = "audiowalkman";
       repo = "walkman";
-      rev = "44c28ec7e6a928093042282e569df6d32b7d681a";
-      sha256 = "sha256-oFppo/D35ttRIDnXUCIVCCq0tX8hlHVtSelQ28AR7o8=";
+      rev = "dfea35a50fa673d884aa9de69d2f11d7d0e73fe9";
+      sha256 = "sha256-coZeWiaAh9OMly3vrEc3w3kYmXx7hd7ZYkhW4m4GsuA=";
     };
     propagatedBuildInputs = with pkgs.python310Packages; [ 
       pyo
