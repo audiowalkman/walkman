@@ -296,9 +296,14 @@ class TitleBar(SimpleUIElement):
         super().__init__(*args, pysimple_gui_class=sg.Titlebar, **kwargs)
 
 
-class Output(SimpleUIElement):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, pysimple_gui_class=sg.Output, **kwargs)
+class Multiline(SimpleUIElement):
+    def __init__(self, *args, element_kwargs: dict = {}, **kwargs):
+        super().__init__(
+            *args,
+            pysimple_gui_class=sg.Multiline,
+            element_kwargs=element_kwargs,
+            **kwargs,
+        )
 
 
 class Slider(SimpleUIElement):
@@ -334,6 +339,7 @@ DEBUG_KEY = "Debug"
 CHANNEL_TEST_KEY = "Test audio & midi"
 ROTATION_CHANNEL_TEST_KEY = "Launch rotation test"
 MIDI_INPUT_TEST_KEY = "Launch midi input test"
+LOGGER_KEY = "Logger"
 
 
 class Debug(UIElement):
@@ -344,11 +350,15 @@ class Debug(UIElement):
         sg.show_debugger_window()
 
 
-class Logger(Output):
+class Logger(Multiline):
     def __init__(self, *args, **kwargs):
         super().__init__(
             *args,
-            element_kwargs={"size": (120, 20)},
+            element_kwargs={
+                "size": (120, 20),
+                "autoscroll": True,
+                "key": LOGGER_KEY
+            },
             **kwargs,
         )
 
@@ -802,16 +812,19 @@ class NestedWindow(NestedUIElement):
 
         # Ignore timeout events
         if event != sg.TIMEOUT_EVENT:
+            # We have to filter out the logger key from our debug message, because it's
+            # too much noise.
+            debug_value_dict = {k: v for k, v in value_dict.items() if k != LOGGER_KEY}
             walkman.constants.LOGGER.debug(
                 f"Catched event       = '{event}' \n"
-                f"with value_dict     = '{value_dict}'\n."
+                f"with value_dict     = '{debug_value_dict}'\n."
             )
             try:
                 self.handle_event(event, value_dict)
             except Exception:
                 walkman.constants.LOGGER.exception(
                     f"Catched exception when handling event '{event}'"
-                    f"with value_dict = '{value_dict}': "
+                    f"with value_dict = '{debug_value_dict}': "
                 )
 
         try:
@@ -881,9 +894,9 @@ class MidiInputTest(NestedWindow):
             element_args=("MIDI Input Test",),
             element_kwargs={"font": DEFAULT_FONT},
         )
-        self.midi_output = Output(
+        self.midi_output = Multiline(
             backend,
-            element_kwargs={"size": (120, 20)},
+            element_kwargs={"size": (120, 20), "autoscroll": True},
         )
         ui_element_tuple = (
             self.title,
