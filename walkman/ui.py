@@ -760,6 +760,7 @@ class NestedWindow(NestedUIElement):
             {
                 "resizable": True,
                 "return_keyboard_events": True,
+                "enable_close_attempted_event": True,
             }
         )
         super().__init__(backend, ui_element_sequence, **kwargs)
@@ -783,20 +784,20 @@ class NestedWindow(NestedUIElement):
         self.pysimple_gui_window.finalize()
 
     def after_loop(self):
-        self.pysimple_gui_window.close()
-        del self.pysimple_gui_window
         for ui_element in self.simple_ui_element_tuple + (self,):
             try:
                 del ui_element.gui_element
             except AttributeError:
                 pass
+        self.pysimple_gui_window.close()
+        del self.pysimple_gui_window
 
     def read(self, pysimple_gui_window: sg.Window) -> bool:
         shall_break = False
         event, value_dict = pysimple_gui_window.read(timeout=1000)
 
         # See if user wants to quit or window was closed
-        if event == sg.WINDOW_CLOSED or event == "Quit":
+        if event == sg.WIN_X_EVENT:
             shall_break = True
 
         # Ignore timeout events
@@ -825,8 +826,7 @@ class NestedWindow(NestedUIElement):
     def loop(self):
         self.before_loop()
         while True:
-            shall_break = self.read(self.pysimple_gui_window)
-            if shall_break:
+            if self.read(self.pysimple_gui_window):
                 break
         self.after_loop()
 
@@ -945,8 +945,8 @@ class GUI(NestedWindow):
         walkman.constants.LOGGER.window_logger_handler.update_output()
 
     def after_loop(self):
-        super().after_loop()
         self.backend.stop()
+        super().after_loop()
 
 
 UI_CLASS_TUPLE = (Walkman,)
