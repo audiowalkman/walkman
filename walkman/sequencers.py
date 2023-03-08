@@ -89,8 +89,15 @@ class Sequencer(walkman.PlayMixin):
     def _stop(self, wait: float = 0):
         for pyo_object in reversed(self.internal_pyo_object_list):
             pyo_object.stop(wait=wait)
+        # We also stop module, because it was us (the Sequencer) who
+        # started it, and no one else may feel responsible for stopping
+        # it. We add a little delay of 0.01 so we avoid a race condition
+        # if there was a last step which activated our module before the
+        # step caller was stopped.
+        self.module.stop(wait=wait + 0.01)
 
     # <= end duplication
+
 
 
 class UndefinedPropertyWarning(Warning):
