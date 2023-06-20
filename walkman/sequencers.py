@@ -25,6 +25,12 @@ class Sequencer(walkman.PlayMixin):
         - True
         - {}
         - 1
+
+    **Warning:**
+
+    Be careful NOT to call play/stop multiple times during setup and
+    after 'event_iterator' has been assigned. This could result in
+    losing your events and then having un-synchronized sequencers.
     """
 
     def __init__(
