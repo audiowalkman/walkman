@@ -84,7 +84,9 @@ class Cue(walkman.PlayMixin, walkman.JumpToMixin):
         return tuple(initialised_module_list)
 
     def _play(self, duration: float = 0, delay: float = 0):
-        for module in self.active_module_tuple:
+        active_module_tuple = self.active_module_tuple
+        walkman.constants.LOGGER.debug(f"Play active module tuple = '{active_module_tuple}'.")
+        for module in active_module_tuple:
             module.play(duration=duration, delay=delay)
 
     def _stop(
