@@ -1,3 +1,7 @@
+# **WARNING: 'walkman' is deprecated, no further development is going to happen. [wm2](https://codeberg.org/wm2/wm2) is the actively maintained successor of walkman.**
+
+---
+
 # walkman
 
 [![Build Status](https://circleci.com/gh/audiowalkman/walkman.svg?style=shield)](https://circleci.com/gh/audiowalkman/walkman)
